@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Feedback Details{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-chat-circle-text"></i> Feedback for {{ event.title }}</h1>
+    <p><strong>Organizer:</strong> {{ event.organizer.full_name if event.organizer else '—' }}</p>
+    <p><strong>Average Rating:</strong> {{ avg_rating }} / 5</p>
+    <p><strong>Total Feedback:</strong> {{ feedback_items|length }}</p>
+
+    <div class="table-responsive" style="margin-top: 16px;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Rating</th>
+                    <th>Comments</th>
+                    <th>Submitted At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fb in feedback_items %}
+                <tr>
+                    <td>{{ fb.student.full_name if fb.student else '—' }}</td>
+                    <td>{{ fb.rating }}/5</td>
+                    <td>{{ fb.comments or '—' }}</td>
+                    <td>{{ fb.submitted_at.strftime('%Y-%m-%d %H:%M') if fb.submitted_at else '—' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not feedback_items %}
+                <tr>
+                    <td colspan="4">No feedback entries found for this event.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <a href="{{ url_for('admin.feedback') }}" class="btn btn-secondary">Back to Feedback</a>
+</div>
+{% endblock %}

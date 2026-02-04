@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Edit Event{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-pencil-simple"></i> Edit Event</h1>
+    <p class="text-muted">Changes to date, time, venue, or mode will be re-submitted for approval (this is not a new event).</p>
+    <form method="POST" class="form-card">
+        <div class="form-group">
+            <label>Event Title</label>
+            <input type="text" name="title" class="form-control" required value="{{ event.title }}">
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" class="form-control" rows="4" required>{{ event.description }}</textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" name="date" class="form-control" required value="{{ event.date.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="form-group">
+                <label>Start Time</label>
+                <input type="time" name="start_time" class="form-control" required value="{{ event.start_time.strftime('%H:%M') }}">
+            </div>
+            <div class="form-group">
+                <label>End Time</label>
+                <input type="time" name="end_time" class="form-control" required value="{{ event.end_time.strftime('%H:%M') }}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Mode</label>
+                <select name="mode" id="event-mode" class="form-control" required>
+                    <option value="offline" {% if (event.mode or '')|lower == 'offline' %}selected{% endif %}>Offline (In-person)</option>
+                    <option value="online" {% if (event.mode or '')|lower == 'online' %}selected{% endif %}>Online (Virtual)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Certificate Template</label>
+                <select name="certificate_template_id" class="form-control">
+                    <option value="">Use Default Template</option>
+                    {% for template in templates %}
+                    <option value="{{ template.template_id }}" {% if event.certificate_template_id == template.template_id %}selected{% endif %}>
+                        {{ template.name }}{% if template.is_default %} (Default){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Department</label>
+                <select name="dept_id" id="dept-select" class="form-control" required>
+                    <option value="">Select Department</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.dept_id }}" {% if event.dept_id == dept.dept_id %}selected{% endif %}>{{ dept.dept_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="venue-select">
+                <label>Venue</label>
+                <select name="venue_id" id="venue-select-input" class="form-control">
+                    <option value="">Select Venue</option>
+                    {% for venue in venues %}
+                    <option value="{{ venue.venue_id }}" data-dept="{{ venue.dept_id if venue.dept_id else 'common' }}" {% if event.venue_id == venue.venue_id %}selected{% endif %}>
+                        {{ venue.venue_name }} (Capacity: {{ venue.capacity }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="meeting-url" style="display:none;">
+                <label>Meeting URL</label>
+                <input type="url" name="meeting_url" class="form-control" placeholder="https://zoom.us/..." value="{{ event.meeting_url or '' }}">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('organizer.view_event', event_id=event.event_id) }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

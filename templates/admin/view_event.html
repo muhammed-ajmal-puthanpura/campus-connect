@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Event Details{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>{{ event.title }}</h1>
+    {% if event.poster_url %}
+        <img src="{{ url_for('static', filename=event.poster_url) }}" alt="{{ event.title }} poster" class="event-poster">
+    {% endif %}
+    <p><strong>Average Rating:</strong> {{ avg_rating }} / 5</p>
+    <p><strong>Total Registrations:</strong> {{ registrations|length }}</p>
+    <p><strong>Attendance:</strong> {{ attendance_records|length }}</p>
+</div>
+{% endblock %}

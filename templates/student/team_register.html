@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Register Team - {{ event.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.team-info-card {
+    background: var(--bg-light);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.team-info-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.team-requirements {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.requirement-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.requirement-item i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.form-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.team-name-input {
+    font-size: 1.1rem;
+    padding: 0.9rem 1rem;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-medium);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.back-link:hover {
+    color: var(--primary-color);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('student.events') }}" class="back-link">
+        <i class="ph ph-arrow-left"></i> Back to Events
+    </a>
+    
+    <h1><i class="ph ph-users-three"></i> Team Registration</h1>
+    <h2 style="color: var(--text-medium); font-weight: normal; margin-bottom: 1.5rem;">{{ event.title }}</h2>
+    
+    <div class="team-info-card">
+        <h3><i class="ph ph-info"></i> Team Event Requirements</h3>
+        <p>This is a team event. You need to create a team and invite other students to join.</p>
+        <div class="team-requirements">
+            <div class="requirement-item">
+                <i class="ph ph-users"></i>
+                <span>Min {{ event.min_team_size }} members</span>
+            </div>
+            <div class="requirement-item">
+                <i class="ph ph-users-four"></i>
+                <span>Max {{ event.max_team_size }} members</span>
+            </div>
+            <div class="requirement-item">
+                <i class="ph ph-calendar"></i>
+                <span>{{ event.date.strftime('%B %d, %Y') }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-card">
+        <h3 style="margin-bottom: 1rem;"><i class="ph ph-flag"></i> Create Your Team</h3>
+        <p class="text-muted" style="margin-bottom: 1rem;">As the team creator, you will be the team leader and can invite other members.</p>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label>Team Name</label>
+                <input type="text" name="team_name" class="form-control team-name-input" 
+                       placeholder="Enter a creative team name..." required maxlength="100">
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="ph ph-rocket"></i> Create Team
+                </button>
+                <a href="{{ url_for('student.events') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

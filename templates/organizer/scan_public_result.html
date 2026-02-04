@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Scan Result{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>Scan Result</h1>
+    {% if success %}
+        <div class="alert alert-success">
+            <strong>✓ Success!</strong>
+            <p>{{ message }}</p>
+            {% if student_name %}
+                <p>Student: {{ student_name }}</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="alert alert-error">
+            <strong>✗ Error</strong>
+            <p>{{ message }}</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

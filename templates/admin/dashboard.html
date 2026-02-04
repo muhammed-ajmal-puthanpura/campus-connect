@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-gear-six"></i> Admin Dashboard</h1>
+    <div class="dashboard-stats">
+        <div class="stat-card"><h3>{{ total_events }}</h3><p>Total Events</p></div>
+        <div class="stat-card"><h3>{{ approved_events }}</h3><p>Approved</p></div>
+        <div class="stat-card"><h3>{{ total_students }}</h3><p>Students</p></div>
+        <div class="stat-card"><h3>{{ total_registrations }}</h3><p>Registrations</p></div>
+    </div>
+    <h2>Recent Events</h2>
+    <table class="table">
+        <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Department</th></tr></thead>
+        <tbody>
+            {% for event in recent_events %}
+            <tr>
+                <td>{{ event.title }}</td>
+                <td>{{ event.date.strftime('%Y-%m-%d') }}</td>
+                <td><span class="badge badge-{{ 'success' if event.status == 'approved' else 'warning' }}">{{ event.status }}</span></td>
+                <td>{{ event.department.dept_name }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

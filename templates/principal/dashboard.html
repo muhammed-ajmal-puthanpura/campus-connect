@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Principal Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-graduation-cap"></i> Principal Dashboard</h1>
+    <form method="GET" class="filter-form" style="margin-bottom: 12px;">
+        <input type="text" name="event" class="form-control" placeholder="Search event name..." value="{{ event_query or '' }}" autocomplete="off">
+        <select name="organizer_id" class="form-control">
+            <option value="">All Organizers</option>
+            {% for org in organizers %}
+            <option value="{{ org.user_id }}" {% if organizer_filter and organizer_filter|string == org.user_id|string %}selected{% endif %}>{{ org.full_name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="{{ url_for('principal.dashboard') }}" class="btn btn-secondary">Reset</a>
+    </form>
+    <h2>Pending Approvals ({{ pending_approvals|length }})</h2>
+    {% for approval in pending_approvals %}
+    <div class="approval-card">
+        <h3>{{ approval.event.title }}</h3>
+        <p>{{ approval.event.description }}</p>
+        <p><strong>Date:</strong> {{ approval.event.date.strftime('%B %d, %Y') }}</p>
+        <p><strong>Organizer:</strong> {{ approval.event.organizer.full_name }}</p>
+        <p><strong>Organizer Email:</strong> {{ approval.event.organizer.email }}</p>
+        <a href="{{ url_for('principal.approve_event', approval_id=approval.approval_id) }}" class="btn btn-primary">Review</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

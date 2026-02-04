@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="ph ph-books"></i> Student Dashboard</h1>
+        <p>Welcome, {{ session.full_name }}!</p>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <h3>{{ upcoming_events|length }}</h3>
+            <p>Upcoming Events</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ registered_event_ids|length }}</h3>
+            <p>My Registrations</p>
+        </div>
+        <div class="stat-card">
+            <h3>{{ attended_event_ids|length }}</h3>
+            <p>Events Attended</p>
+        </div>
+    </div>
+    
+    {% if pending_invitations_count and pending_invitations_count > 0 %}
+    <div style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; padding: 1rem 1.25rem; border-radius: 10px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i class="ph ph-users-three" style="font-size: 1.5rem;"></i>
+            <div>
+                <strong>You have {{ pending_invitations_count }} team invitation{{ 's' if pending_invitations_count > 1 else '' }}!</strong>
+                <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">Someone wants you to join their team</p>
+            </div>
+        </div>
+        <a href="{{ url_for('student.team_invitations') }}" class="btn" style="background: white; color: var(--primary-color); font-weight: 600;">
+            <i class="ph ph-envelope"></i> View Invitations
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <h2><i class="ph ph-confetti"></i> Upcoming Events</h2>
+        {% if upcoming_events %}
+            <div class="events-grid">
+                {% for event in upcoming_events %}
+                <div class="event-card">
+                    {% if event.poster_url %}
+                        <img src="{{ url_for('static', filename=event.poster_url) }}" alt="{{ event.title }} poster" class="event-poster">
+                    {% endif %}
+                    <div class="event-header">
+                        <h3>{{ event.title }}</h3>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="badge badge-success">{{ event.status }}</span>
+                            {% if event.is_team_event %}
+                            <span class="badge" style="background: #7c3aed; color: white;"><i class="ph ph-users-three"></i> Team</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p class="event-description">
+                        {% set short = event.description[:150] %}
+                        <span class="desc-short">{{ short }}{% if event.description|length > 150 %}...{% endif %}</span>
+                        <span class="desc-full" style="display:none;">{{ event.description }}</span>
+                        {% if event.description|length > 150 %}
+                            <a href="#" class="read-more" role="button">Read more</a>
+                        {% endif %}
+                    </p>
+                    <div class="event-details">
+                        <p><strong><i class="ph ph-calendar"></i> Date:</strong> {{ event.date.strftime('%B %d, %Y') }}</p>
+                        <p><strong><i class="ph ph-clock"></i> Time:</strong> {{ event.start_time.strftime('%H:%M') }} - {{ event.end_time.strftime('%H:%M') }}</p>
+                        <p><strong><i class="ph ph-broadcast"></i> Mode:</strong>
+                            {% if (event.mode or '')|lower == 'online' %}
+                                Online
+                            {% else %}
+                                Offline
+                            {% endif %}
+                        </p>
+                        <p><strong><i class="ph ph-map-pin"></i> Venue:</strong> {{ event.venue.venue_name if event.venue else '—' }}</p>
+                        <p><strong><i class="ph ph-buildings"></i> Department:</strong> {{ event.department.dept_name }}</p>
+                        {% if event.is_team_event %}
+                        <p><strong><i class="ph ph-users"></i> Team Size:</strong> {{ event.min_team_size }}-{{ event.max_team_size }} members</p>
+                        {% endif %}
+                    </div>
+                    
+                    {% if event.event_id in registered_event_ids %}
+                        {% if event.event_id in (attended_event_ids or []) %}
+                            <button class="btn btn-success" disabled><i class="ph ph-check-circle"></i> Attended</button>
+                        {% else %}
+                            <button class="btn btn-secondary" disabled><i class="ph ph-check"></i> Already Registered</button>
+                        {% endif %}
+                        {% if (event.mode or '')|lower == 'online' and event.meeting_url %}
+                            <p style="margin-top:8px;"><a href="{{ event.meeting_url }}" class="btn btn-sm btn-outline-primary" target="_blank"><i class="ph ph-video-camera"></i> Join Meeting</a></p>
+                        {% endif %}
+                    {% else %}
+                        <form method="POST" action="{{ url_for('student.register_event', event_id=event.event_id) }}" style="display: inline;">
+                            {% if event.is_team_event %}
+                            <button type="submit" class="btn btn-primary"><i class="ph ph-users-three"></i> Create/Join Team</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-primary"><i class="ph ph-user-plus"></i> Register Now</button>
+                            {% endif %}
+                        </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>No upcoming events at the moment.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2><i class="ph ph-scroll"></i> Recently Attended Events</h2>
+        {% if past_events %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Event Name</th>
+                            <th>Date</th>
+                            <th>Department</th>
+                            <th>Organizer</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in past_events[:5] %}
+                        <tr>
+                            <td>{{ event.title }}</td>
+                            <td>{{ event.date.strftime('%B %d, %Y') }}</td>
+                            <td>{{ event.department.dept_name }}</td>
+                            <td>{{ event.organizer.full_name if event.organizer else '—' }}</td>
+                            <td>
+                                <a href="{{ url_for('student.submit_feedback', event_id=event.event_id) }}" class="btn btn-sm">
+                                    Submit Feedback
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>You haven't attended any events yet.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

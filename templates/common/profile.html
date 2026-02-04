@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-user-circle"></i> User Profile</h1>
+    <div class="profile-card" style="margin-bottom: 16px;">
+        <p><strong>Role:</strong> {{ user.role.role_name }}</p>
+        {% if user.department %}<p><strong>Department:</strong> {{ user.department.dept_name }}</p>{% endif %}
+        {% if user.role and (user.role.role_name|lower) == 'student' %}
+        <p><strong>Reg No:</strong> {{ user.username or '—' }}</p>
+        {% endif %}
+        <p><strong>Member Since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+    </div>
+
+    <form method="POST" class="form-card">
+        {% set role_lower = user.role.role_name|lower if user.role else '' %}
+        {% set is_student = role_lower == 'student' %}
+        <div class="form-row">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="full_name" class="form-control" value="{{ user.full_name }}" {% if is_student %}disabled{% else %}required{% endif %}>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+            </div>
+        </div>
+        {% if is_student %}
+        <p class="text-muted" style="margin-top: 8px;">Name and username updates are disabled for students. Please contact admin for corrections.</p>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('auth.change_password') }}" class="btn btn-secondary">Change Password</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Submit Feedback{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-notepad"></i> Submit Feedback for {{ event.title }}</h1>
+    <p class="text-muted"><strong>Organizer:</strong> {{ event.organizer.full_name if event.organizer else '—' }}</p>
+    <form method="POST">
+        <div class="form-group">
+            <label>Rating (1-5)</label>
+            <select name="rating" class="form-control" required>
+                <option value="5" {% if existing_feedback and existing_feedback.rating == 5 %}selected{% endif %}>★★★★★ Excellent</option>
+                <option value="4" {% if existing_feedback and existing_feedback.rating == 4 %}selected{% endif %}>★★★★☆ Good</option>
+                <option value="3" {% if existing_feedback and existing_feedback.rating == 3 %}selected{% endif %}>★★★☆☆ Average</option>
+                <option value="2" {% if existing_feedback and existing_feedback.rating == 2 %}selected{% endif %}>★★☆☆☆ Poor</option>
+                <option value="1" {% if existing_feedback and existing_feedback.rating == 1 %}selected{% endif %}>★☆☆☆☆ Very Poor</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Comments</label>
+            <textarea name="comments" class="form-control" rows="5">{{ existing_feedback.comments if existing_feedback else '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+        <a href="{{ url_for('student.dashboard') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

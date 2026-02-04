@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Organizer Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Desktop: show table, hide cards */
+.events-cards {
+    display: none;
+}
+
+/* Mobile: hide table, show cards */
+@media (max-width: 768px) {
+    .desktop-action {
+        display: none !important;
+    }
+    
+    .events-table {
+        display: none !important;
+    }
+    
+    .events-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .event-card-mobile {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid var(--border-color);
+    }
+    
+    .event-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .event-card-title {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--text-dark);
+        margin: 0;
+    }
+    
+    .event-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-medium);
+        margin-bottom: 0.75rem;
+    }
+    
+    .event-card-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .event-card-attendance {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-light);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .attendance-attended {
+        color: #16a34a;
+        font-weight: 600;
+    }
+    
+    .attendance-attended i {
+        color: #16a34a;
+        font-size: 1.1rem;
+    }
+    
+    .attendance-none {
+        color: #dc2626;
+        font-weight: 500;
+    }
+    
+    .attendance-none i {
+        color: #dc2626;
+        font-size: 1.1rem;
+    }
+    
+    .attendance-pending {
+        color: #d97706;
+        font-weight: 500;
+    }
+    
+    .attendance-pending i {
+        color: #d97706;
+        font-size: 1.1rem;
+    }
+    
+    .event-card-actions {
+        margin-top: 0.75rem;
+    }
+    
+    .event-card-actions .btn-view {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: var(--primary-color);
+        color: white;
+        font-weight: 600;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 1rem;
+    }
+    
+    .event-card-actions .btn-view:hover {
+        background: var(--primary-dark);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-target"></i> Organizer Dashboard</h1>
+    <div class="dashboard-stats">
+        <div class="stat-card"><h3>{{ pending_count }}</h3><p>Pending</p></div>
+        <div class="stat-card"><h3>{{ approved_count }}</h3><p>Approved</p></div>
+        <div class="stat-card"><h3>{{ rejected_count }}</h3><p>Rejected</p></div>
+    </div>
+    <a href="{{ url_for('organizer.create_event') }}" class="btn btn-primary desktop-action">+ Create New Event</a>
+    <h2>My Events</h2>
+    <form method="GET" class="filter-form desktop-action" style="margin-bottom: 12px;">
+        <input type="text" name="q" class="form-control" placeholder="Search event name..." value="{{ search or '' }}" autocomplete="off">
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="{{ url_for('organizer.dashboard') }}" class="btn btn-secondary">Reset</a>
+    </form>
+    
+    <!-- Mobile: Card Layout -->
+    <div class="events-cards">
+        {% for event in events %}
+        <div class="event-card-mobile">
+            <div class="event-card-header">
+                <h3 class="event-card-title">{{ event.title }}</h3>
+                <span class="badge badge-{{ 'success' if event.status == 'approved' else 'warning' if event.status == 'pending' else 'danger' }}">{{ event.status }}</span>
+            </div>
+            <div class="event-card-meta">
+                <span><i class="ph ph-calendar"></i> {{ event.date.strftime('%b %d, %Y') }}</span>
+                <span><i class="ph ph-clock"></i> {{ event.start_time.strftime('%H:%M') }}</span>
+                <span><i class="ph ph-users"></i> {{ event.registrations|length }} registered</span>
+            </div>
+            {% set attended_count = event.registrations|selectattr('attendance')|list|length %}
+            {% set total_registered = event.registrations|length %}
+            <div class="event-card-attendance">
+                {% if event.status != 'approved' %}
+                    <i class="ph ph-clock"></i>
+                    <span class="attendance-pending">Pending approval</span>
+                {% elif attended_count > 0 %}
+                    <i class="ph-fill ph-check-circle"></i>
+                    <span class="attendance-attended">{{ attended_count }}/{{ total_registered }} attended</span>
+                {% else %}
+                    <i class="ph-fill ph-x-circle"></i>
+                    <span class="attendance-none">No attendance marked</span>
+                {% endif %}
+            </div>
+            <div class="event-card-actions">
+                <a href="{{ url_for('organizer.view_event', event_id=event.event_id) }}" class="btn-view">
+                    <i class="ph ph-eye"></i> View Details
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Desktop: Table Layout -->
+    <div class="table-responsive events-table">
+        <table class="table">
+            <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.title }}</td>
+                    <td>{{ event.date.strftime('%Y-%m-%d') }}</td>
+                    <td><span class="badge badge-{{ 'success' if event.status == 'approved' else 'warning' if event.status == 'pending' else 'danger' }}">{{ event.status }}</span></td>
+                    <td>
+                        <a href="{{ url_for('organizer.view_event', event_id=event.event_id) }}" class="btn btn-sm btn-primary"><i class="ph ph-eye"></i> View</a>
+                        <a href="{{ url_for('organizer.edit_event', event_id=event.event_id) }}" class="btn btn-sm btn-secondary">Edit</a>
+                        {% if event.status == 'approved' %}
+                        <a href="{{ url_for('organizer.download_approval_pdf', event_id=event.event_id) }}" class="btn btn-sm btn-primary">Download Approval</a>
+                        <a href="{{ url_for('organizer.scan_qr', event_id=event.event_id) }}" class="btn btn-sm btn-primary"><i class="ph ph-qr-code"></i> Scan</a>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('organizer.delete_event', event_id=event.event_id) }}" style="display:inline-block;" onsubmit="return confirmAction('Delete this event?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                        {% if past_event_ids and event.event_id in past_event_ids %}
+                        <a href="{{ url_for('organizer.event_feedback', event_id=event.event_id) }}" class="btn btn-sm btn-secondary">Reviews</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

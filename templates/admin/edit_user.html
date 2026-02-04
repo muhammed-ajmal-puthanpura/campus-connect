@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Edit User{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-user-gear"></i> Edit User</h1>
+    <div class="form-card">
+        <form method="POST">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" class="form-control" value="{{ user.full_name }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Username / Reg No</label>
+                    <input type="text" name="username" class="form-control" value="{{ user.username or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="role_id" class="form-control" required>
+                        {% for role in roles %}
+                        <option value="{{ role.role_id }}" {% if user.role and user.role.role_id == role.role_id %}selected{% endif %}>{{ role.role_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Department (required for HOD)</label>
+                    <select name="dept_id" class="form-control">
+                        <option value="">Select Department</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.dept_id }}" {% if user.department and user.department.dept_id == dept.dept_id %}selected{% endif %}>{{ dept.dept_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+        <p class="text-muted" style="margin-top: 10px;">Use this page to correct student name/username and email when needed.</p>
+    </div>
+</div>
+{% endblock %}

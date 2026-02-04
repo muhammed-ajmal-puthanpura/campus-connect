@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Browse Events{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-confetti"></i> Available Events</h1>
+    <form method="GET" class="filter-form">
+        <input type="text" name="q" class="form-control" placeholder="Search by event title" value="{{ search_query or '' }}" autocomplete="off">
+        <select name="organizer">
+            <option value="" {% if not organizer_filter %}selected{% endif %}>All Organizers</option>
+            {% for organizer in organizers %}
+                <option value="{{ organizer.user_id }}" {% if organizer_filter and organizer_filter|int == organizer.user_id %}selected{% endif %}>
+                    {{ organizer.full_name }}
+                </option>
+            {% endfor %}
+        </select>
+        <select name="mode">
+            <option value="" {% if not mode_filter %}selected{% endif %}>All Modes</option>
+            <option value="online" {% if mode_filter == 'online' %}selected{% endif %}>Online</option>
+            <option value="offline" {% if mode_filter == 'offline' %}selected{% endif %}>Offline</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+    {% if events %}
+        <div class="events-grid">
+            {% for event in events %}
+            <div class="event-card">
+                {% if event.poster_url %}
+                    <img src="{{ url_for('static', filename=event.poster_url) }}" alt="{{ event.title }} poster" class="event-poster">
+                {% endif %}
+                <h3>{{ event.title }}</h3>
+                <p>{{ event.description }}</p>
+                <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y') }}</p>
+                <p><strong>Mode:</strong> {% if (event.mode or '')|lower == 'online' %}Online{% else %}Offline{% endif %}</p>
+                <p><strong>Venue:</strong> {{ event.venue.venue_name if event.venue else '—' }}</p>
+                {% if event.event_id in registered_event_ids %}
+                    {% if event.event_id in (attended_event_ids or []) %}
+                        <button class="btn btn-success" disabled><i class="ph ph-check-circle"></i> Attended</button>
+                    {% else %}
+                        <button class="btn btn-secondary" disabled><i class="ph ph-check"></i> Registered</button>
+                    {% endif %}
+                    {% if (event.mode or '')|lower == 'online' and event.meeting_url %}
+                        <a href="{{ event.meeting_url }}" class="btn btn-sm btn-outline-primary" target="_blank"><i class="ph ph-video-camera"></i> Join Meeting</a>
+                    {% endif %}
+                {% else %}
+                    <form method="POST" action="{{ url_for('student.register_event', event_id=event.event_id) }}">
+                        <button type="submit" class="btn btn-primary"><i class="ph ph-user-plus"></i> Register</button>
+                    </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No events available.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}My Certificates{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-certificate"></i> My Certificates</h1>
+    <form method="GET" class="filter-form">
+        <input type="text" name="q" class="form-control" placeholder="Search by event name" value="{{ search_query or '' }}" autocomplete="off">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+    {% if certificates %}
+        <!-- Desktop Table View -->
+        <div class="table-responsive desktop-only">
+            <table class="table">
+                <thead>
+                    <tr><th>Event</th><th>Prize</th><th>Issued Date</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    {% for cert in certificates %}
+                    <tr>
+                        <td>{{ cert.event.title }}</td>
+                        <td>
+                            {% if cert.prize_text %}
+                            <span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 6px; font-size: 0.85rem;">
+                                <i class="ph-fill ph-trophy" style="color: #d97706;"></i>
+                                <span style="font-weight: 600; color: #92400e;">{{ cert.prize_text }}</span>
+                            </span>
+                            {% else %}
+                            <span style="color: var(--text-medium);"><i class="ph ph-check-circle"></i> Participation</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ cert.issued_at.strftime('%B %d, %Y') }}</td>
+                        <td><a href="{{ url_for('student.download_certificate', certificate_id=cert.certificate_id) }}" class="btn btn-primary">Download PDF</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Card View -->
+        <div class="mobile-only certificates-grid">
+            {% for cert in certificates %}
+            <div class="certificate-card">
+                <div class="cert-header">
+                    <h3><i class="ph ph-certificate"></i> {{ cert.event.title }}</h3>
+                    {% if cert.prize_text %}
+                    <span class="prize-badge">
+                        <i class="ph-fill ph-trophy"></i> {{ cert.prize_text }}
+                    </span>
+                    {% else %}
+                    <span class="participation-badge">
+                        <i class="ph ph-check-circle"></i> Participation
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="cert-date"><i class="ph ph-calendar"></i> Issued: {{ cert.issued_at.strftime('%B %d, %Y') }}</p>
+                <a href="{{ url_for('student.download_certificate', certificate_id=cert.certificate_id) }}" class="btn btn-primary btn-block">
+                    <i class="ph ph-download"></i> Download Certificate
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No certificates yet. Attend events to earn certificates!</p>
+    {% endif %}
+</div>
+
+<style>
+/* Show/hide based on screen size */
+.desktop-only { display: block; }
+.mobile-only { display: none; }
+
+@media (max-width: 768px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block !important; }
+}
+
+/* Certificate cards for mobile */
+.certificates-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.certificate-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid var(--border-color);
+}
+
+.certificate-card h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.certificate-card h3 i {
+    color: var(--primary-color);
+}
+
+.prize-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.65rem;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 0.75rem;
+}
+
+.prize-badge i {
+    color: #d97706;
+}
+
+.participation-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.65rem;
+    background: var(--bg-light);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--text-medium);
+    margin-bottom: 0.75rem;
+}
+
+.cert-date {
+    color: var(--text-medium);
+    font-size: 0.9rem;
+    margin: 0.5rem 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+</style>
+{% endblock %}

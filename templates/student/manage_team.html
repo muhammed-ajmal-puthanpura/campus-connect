@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Team: {{ team.team_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.team-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.team-header h1 {
+    color: white;
+    margin-bottom: 0.25rem;
+}
+
+.team-header p {
+    opacity: 0.9;
+    margin: 0;
+}
+
+.team-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.team-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255,255,255,0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.section-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.section-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+.member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-light);
+    border-radius: 8px;
+}
+
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.member-info {
+    flex: 1;
+}
+
+.member-name {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.member-username {
+    font-size: 0.85rem;
+    color: var(--text-medium);
+}
+
+.member-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    background: var(--primary-color);
+    color: white;
+}
+
+.invite-form {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.invite-form input {
+    flex: 1;
+}
+
+.pending-list {
+    margin-top: 1rem;
+}
+
+.pending-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: rgba(234, 179, 8, 0.1);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.pending-item .badge {
+    background: #eab308;
+    color: white;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-medium);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.back-link:hover {
+    color: var(--primary-color);
+}
+
+.team-status-warning {
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #92400e;
+}
+
+.team-status-success {
+    background: rgba(22, 163, 74, 0.1);
+    border: 1px solid rgba(22, 163, 74, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #166534;
+}
+
+@media (max-width: 768px) {
+    .team-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .invite-form {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('student.my_registrations') }}" class="back-link">
+        <i class="ph ph-arrow-left"></i> Back to My Registrations
+    </a>
+    
+    <div class="team-header">
+        <h1><i class="ph ph-users-three"></i> {{ team.team_name }}</h1>
+        <p>{{ event.title }}</p>
+        <div class="team-stats">
+            <div class="team-stat">
+                <i class="ph ph-users"></i>
+                <span>{{ members|length }}/{{ event.max_team_size }} members</span>
+            </div>
+            <div class="team-stat">
+                <i class="ph ph-calendar"></i>
+                <span>{{ event.date.strftime('%b %d, %Y') }}</span>
+            </div>
+            <div class="team-stat">
+                <i class="ph ph-crown"></i>
+                <span>Leader: {{ team.leader.full_name }}</span>
+            </div>
+        </div>
+    </div>
+    
+    {% if members|length < event.min_team_size %}
+    <div class="team-status-warning">
+        <i class="ph ph-warning" style="font-size: 1.5rem;"></i>
+        <div>
+            <strong>Team Incomplete</strong><br>
+            <span style="font-size: 0.9rem;">You need at least {{ event.min_team_size }} members. Currently: {{ members|length }}</span>
+        </div>
+    </div>
+    {% else %}
+    <div class="team-status-success">
+        <i class="ph ph-check-circle" style="font-size: 1.5rem;"></i>
+        <div>
+            <strong>Team Complete!</strong><br>
+            <span style="font-size: 0.9rem;">Your team meets the minimum requirement. You can still add up to {{ event.max_team_size }} members.</span>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="section-card">
+        <h3><i class="ph ph-users"></i> Team Members ({{ members|length }}/{{ event.max_team_size }})</h3>
+        <div class="member-list">
+            {% for member in members %}
+            <div class="member-item">
+                <div class="member-avatar">{{ member.student.full_name[0] }}</div>
+                <div class="member-info">
+                    <div class="member-name">{{ member.student.full_name }}</div>
+                    <div class="member-username">@{{ member.student.username }}</div>
+                </div>
+                {% if member.student_id == team.leader_id %}
+                <span class="member-badge"><i class="ph ph-crown"></i> Leader</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    {% if is_leader %}
+    <div class="section-card">
+        <h3><i class="ph ph-paper-plane-tilt"></i> Invite Members</h3>
+        
+        {% if members|length >= event.max_team_size %}
+        <p class="text-muted">Team is full ({{ event.max_team_size }} members maximum)</p>
+        {% else %}
+        <p class="text-muted">Enter the username of the student you want to invite:</p>
+        <form method="POST" action="{{ url_for('student.invite_member', team_id=team.team_id) }}" class="invite-form">
+            <input type="text" name="username" class="form-control" placeholder="Enter username..." required>
+            <button type="submit" class="btn btn-primary">
+                <i class="ph ph-paper-plane-tilt"></i> Send Invite
+            </button>
+        </form>
+        {% endif %}
+        
+        {% if pending_invitations %}
+        <div class="pending-list">
+            <h4 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Pending Invitations</h4>
+            {% for invite in pending_invitations %}
+            <div class="pending-item">
+                <div>
+                    <strong>{{ invite.invitee.full_name }}</strong>
+                    <span style="color: var(--text-medium);">(@{{ invite.invitee.username }})</span>
+                </div>
+                <span class="badge">Pending</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

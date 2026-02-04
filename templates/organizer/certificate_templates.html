@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Certificate Templates{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Certificate Templates</h1>
+        <p class="text-muted">Upload up to 10 templates. Choose one default to apply to your events.</p>
+    </div>
+
+    <div class="form-card" style="margin-bottom: 1.5rem;">
+        <h3>Upload Template</h3>
+        <form method="POST" action="{{ url_for('organizer.upload_certificate_template') }}" enctype="multipart/form-data">
+            <div class="form-row">
+                <input type="text" name="name" class="form-control" placeholder="Template name (optional)">
+                <input type="file" name="template_image" class="form-control" accept=".png,.jpg,.jpeg,.webp" required>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+            <small class="text-muted">Max templates: {{ max_templates }}. Allowed: PNG, JPG, WEBP.</small>
+        </form>
+    </div>
+
+    {% if templates %}
+    <div class="template-grid">
+        {% for template in templates %}
+        <div class="template-card">
+            <div class="template-card__header">
+                <h4>{{ template.name }}</h4>
+                {% if template.is_default %}
+                    <span class="badge badge-success">Default</span>
+                {% endif %}
+            </div>
+            <div class="template-card__body">
+                <img src="{{ url_for('static', filename=template.image_url) }}" alt="{{ template.name }}" class="template-thumb">
+            </div>
+            <div class="template-card__actions">
+                <a href="{{ url_for('organizer.edit_certificate_template', template_id=template.template_id) }}" class="btn btn-secondary">Interactive Mode</a>
+                {% if not template.is_default %}
+                <form method="POST" action="{{ url_for('organizer.set_default_certificate_template', template_id=template.template_id) }}" style="display:inline-block;">
+                    <button type="submit" class="btn btn-primary">Set Default</button>
+                </form>
+                {% endif %}
+                <form method="POST" action="{{ url_for('organizer.delete_certificate_template', template_id=template.template_id) }}" style="display:inline-block;" onsubmit="return confirmAction('Delete this template?')">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p>No templates uploaded yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

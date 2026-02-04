@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Campus Event System{% endblock %}</title>
+    <!-- Premium Icon Set: Phosphor Icons -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% if session.get('user_id') %}app-body{% endif %}">
+    <!-- Navigation -->
+    {% if session.get('user_id') %}
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h2><i class="ph ph-graduation-cap"></i> Campus Connect</h2>
+            </div>
+                <button class="nav-toggle" aria-label="Toggle navigation" onclick="toggleMobileMenu()"><i class="ph ph-list"></i></button>
+            <div class="nav-menu">
+                <span class="user-info">
+                    <i class="ph ph-user-circle"></i> {{ session.full_name }} ({{ session.role_name }})
+                </span>
+                
+                {% if (session.get('role_name') or '')|lower == 'student' %}
+                    <a href="{{ url_for('student.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+                    <a href="{{ url_for('student.events') }}"><i class="ph ph-calendar-dots"></i> Events</a>
+                    <a href="{{ url_for('student.my_registrations') }}"><i class="ph ph-ticket"></i> My Registrations</a>
+                    <a href="{{ url_for('student.my_certificates') }}"><i class="ph ph-certificate"></i> Certificates</a>
+                {% elif (session.get('role_name') or '')|lower in ['event organizer', 'organizer'] %}
+                    <a href="{{ url_for('organizer.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+                    <a href="{{ url_for('organizer.create_event') }}"><i class="ph ph-plus-circle"></i> Create Event</a>
+                    <a href="{{ url_for('organizer.certificate_templates') }}"><i class="ph ph-certificate"></i> Certificate Templates</a>
+                {% elif (session.get('role_name') or '')|lower == 'hod' %}
+                    <a href="{{ url_for('hod.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+                {% elif (session.get('role_name') or '')|lower == 'principal' %}
+                    <a href="{{ url_for('principal.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+                {% elif (session.get('role_name') or '')|lower == 'admin' %}
+                    <a href="{{ url_for('admin.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+                    <a href="{{ url_for('admin.events') }}"><i class="ph ph-calendar-dots"></i> Events</a>
+                    <a href="{{ url_for('admin.reports') }}"><i class="ph ph-chart-bar"></i> Reports</a>
+                    <a href="{{ url_for('admin.feedback') }}"><i class="ph ph-chat-circle-text"></i> Feedback</a>
+                    <a href="{{ url_for('admin.users') }}"><i class="ph ph-users"></i> Users</a>
+                {% endif %}
+                
+                <a href="{{ url_for('common.profile') }}"><i class="ph ph-user"></i> Profile</a>
+                <a href="{{ url_for('auth.logout') }}" class="btn-logout"><i class="ph ph-sign-out"></i> Logout</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                        <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Campus Event Management System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    {% if session.get('user_id') %}
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+        {% if (session.get('role_name') or '')|lower == 'student' %}
+            <a href="{{ url_for('student.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+            <a href="{{ url_for('student.events') }}"><i class="ph ph-calendar-dots"></i> Events</a>
+            <a href="{{ url_for('student.my_registrations') }}"><i class="ph ph-ticket"></i> Registrations</a>
+            <a href="{{ url_for('student.my_certificates') }}"><i class="ph ph-certificate"></i> Certificates</a>
+        {% elif (session.get('role_name') or '')|lower in ['event organizer', 'organizer'] %}
+            <a href="{{ url_for('organizer.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+            <a href="{{ url_for('organizer.scan_select') }}"><i class="ph ph-qr-code"></i> Scan QR</a>
+            <a href="{{ url_for('organizer.create_event') }}"><i class="ph ph-plus-circle"></i> Create</a>
+            <a href="{{ url_for('organizer.certificate_templates') }}"><i class="ph ph-certificate"></i> Templates</a>
+        {% elif (session.get('role_name') or '')|lower == 'hod' %}
+            <a href="{{ url_for('hod.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+        {% elif (session.get('role_name') or '')|lower == 'principal' %}
+            <a href="{{ url_for('principal.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+        {% elif (session.get('role_name') or '')|lower == 'admin' %}
+            <a href="{{ url_for('admin.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
+            <a href="{{ url_for('admin.events') }}"><i class="ph ph-calendar-dots"></i> Events</a>
+            <a href="{{ url_for('admin.reports') }}"><i class="ph ph-chart-bar"></i> Reports</a>
+            <a href="{{ url_for('admin.feedback') }}"><i class="ph ph-chat-circle-text"></i> Feedback</a>
+            <a href="{{ url_for('admin.users') }}"><i class="ph ph-users"></i> Users</a>
+        {% endif %}
+
+        <a href="{{ url_for('common.profile') }}"><i class="ph ph-user"></i> Profile</a>
+        <a href="{{ url_for('auth.logout') }}"><i class="ph ph-sign-out"></i> Logout</a>
+    </nav>
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Campus Events{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1><i class="ph ph-graduation-cap"></i> Campus Connect</h1>
+        <h2>Login to Your Account</h2>
+        
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            <div class="form-group">
+                <label for="identifier">Username (Students) / Email (Others)</label>
+                <input type="text" id="identifier" name="identifier" required
+                       placeholder="e.g., 22CS001 or your.email@campus.edu" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="Enter your password" class="form-control">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Login</button>
+        </form>
+        <div class="auth-footer">
+            <a href="{{ url_for('auth.forgot_password') }}">Forgot password?</a>
+        </div>
+</div>
+{% endblock %}

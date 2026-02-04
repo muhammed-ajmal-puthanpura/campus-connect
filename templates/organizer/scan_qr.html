@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+{% block title %}Scan QR Code - {{ event.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =============================================================================
+   QR Scanner Page Styles - Production Ready
+   ============================================================================= */
+
+.scanner-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.scanner-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.scanner-header h1 {
+    font-size: 1.5rem;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.scanner-header .event-title {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.scanner-header .event-info {
+    font-size: 0.9rem;
+    color: var(--text-medium);
+    margin-top: 0.5rem;
+}
+
+/* Scanner Container */
+.scanner-container {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.scanner-body {
+    padding: 1.5rem;
+}
+
+/* Camera Controls */
+.scanner-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    justify-content: center;
+}
+
+.scanner-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: none;
+    min-width: 140px;
+}
+
+.scanner-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.scanner-btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.scanner-btn-primary:hover:not(:disabled) {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.scanner-btn-danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.scanner-btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.scanner-btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.scanner-btn-success:hover:not(:disabled) {
+    background: #15803d;
+}
+
+.scanner-btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-dark);
+    border: 1px solid var(--border-color);
+}
+
+.scanner-btn-secondary:hover:not(:disabled) {
+    background: var(--border-color);
+}
+
+/* Camera Preview */
+.camera-preview-container {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    background: #000;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+#qr-reader {
+    width: 100%;
+    height: 100%;
+}
+
+#qr-reader video {
+    object-fit: cover;
+}
+
+/* Override html5-qrcode default styles */
+#qr-reader__scan_region {
+    background: transparent !important;
+}
+
+#qr-reader__scan_region img {
+    display: none !important;
+}
+
+#qr-reader__dashboard {
+    display: none !important;
+}
+
+/* Scanner overlay */
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.scanner-overlay::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70%;
+    height: 70%;
+    max-width: 280px;
+    max-height: 280px;
+    border: 3px solid rgba(79, 70, 229, 0.8);
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+}
+
+.scanner-overlay::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70%;
+    height: 3px;
+    max-width: 280px;
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+    animation: scanLine 2s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+    0%, 100% {
+        transform: translate(-50%, -140px);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, 140px);
+        opacity: 1;
+    }
+}
+
+/* Camera placeholder when not active */
+.camera-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    color: #666;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.camera-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.camera-placeholder p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Status Messages */
+.scanner-status-container {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.scanner-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-full);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.status-info {
+    background: var(--info-light);
+    color: var(--info-color);
+}
+
+.status-success {
+    background: var(--success-light);
+    color: var(--success-color);
+}
+
+.status-warning {
+    background: var(--warning-light);
+    color: #92400e;
+}
+
+.status-error {
+    background: var(--danger-light);
+    color: var(--danger-color);
+}
+
+/* Result Section */
+.result-section {
+    margin-top: 1.5rem;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.result-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid;
+}
+
+.result-success {
+    background: var(--success-light);
+    border-color: var(--success-color);
+}
+
+.result-warning {
+    background: var(--warning-light);
+    border-color: var(--warning-color);
+}
+
+.result-error {
+    background: var(--danger-light);
+    border-color: var(--danger-color);
+}
+
+.result-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.result-success .result-icon {
+    background: var(--success-color);
+    color: white;
+}
+
+.result-warning .result-icon {
+    background: var(--warning-color);
+    color: white;
+}
+
+.result-error .result-icon {
+    background: var(--danger-color);
+    color: white;
+}
+
+.result-content h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+}
+
+.result-details p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    color: var(--text-medium);
+}
+
+.result-details strong {
+    color: var(--text-dark);
+}
+
+.result-note {
+    margin-top: 0.5rem !important;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+/* Instructions */
+.scanner-instructions {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-top: 1.5rem;
+}
+
+.scanner-instructions h4 {
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.scanner-instructions ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.scanner-instructions li {
+    font-size: 0.85rem;
+    color: var(--text-medium);
+    margin-bottom: 0.35rem;
+}
+
+/* Back Link */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-medium);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    transition: color var(--transition-fast);
+}
+
+.back-link:hover {
+    color: var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .scanner-page {
+        padding: 0.75rem;
+    }
+    
+    .scanner-header h1 {
+        font-size: 1.25rem;
+    }
+    
+    .scanner-body {
+        padding: 1rem;
+    }
+    
+    .scanner-controls {
+        flex-direction: column;
+    }
+    
+    .scanner-btn {
+        width: 100%;
+    }
+    
+    .result-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+
+/* Camera switch button */
+.camera-switch-btn {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: var(--text-dark);
+    transition: all var(--transition-fast);
+    z-index: 10;
+}
+
+.camera-switch-btn:hover {
+    background: white;
+    transform: scale(1.1);
+}
+
+/* Stats bar */
+.stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="scanner-page">
+    <!-- Back Link -->
+    <a href="{{ url_for('organizer.view_event', event_id=event.event_id) }}" class="back-link">
+        <i class="ph ph-arrow-left"></i> Back to Event
+    </a>
+    
+    <!-- Header -->
+    <div class="scanner-header">
+        <h1>
+            <i class="ph ph-qr-code"></i>
+            QR Scanner
+        </h1>
+        <div class="event-title">{{ event.title }}</div>
+        <div class="event-info">
+            <i class="ph ph-calendar"></i> {{ event.date.strftime('%B %d, %Y') }}
+            &nbsp;•&nbsp;
+            <i class="ph ph-clock"></i> {{ event.start_time.strftime('%H:%M') }} - {{ event.end_time.strftime('%H:%M') }}
+        </div>
+    </div>
+    
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-value" id="total-registrations">{{ registrations_count }}</div>
+            <div class="stat-label">Registered</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="attended-count">{{ attended_count }}</div>
+            <div class="stat-label">Attended</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="remaining-count">{{ registrations_count - attended_count }}</div>
+            <div class="stat-label">Remaining</div>
+        </div>
+    </div>
+    
+    <!-- Scanner Container -->
+    <div class="scanner-container">
+        <div class="scanner-body">
+            <!-- Controls -->
+            <div class="scanner-controls">
+                <button type="button" id="start-scan" class="scanner-btn scanner-btn-primary">
+                    <i class="ph ph-camera"></i>
+                    <span>Start Scanner</span>
+                </button>
+                <button type="button" id="stop-scan" class="scanner-btn scanner-btn-danger" disabled>
+                    <i class="ph ph-stop"></i>
+                    <span>Stop</span>
+                </button>
+                <button type="button" id="scan-next" class="scanner-btn scanner-btn-success" style="display: none;">
+                    <i class="ph ph-arrow-clockwise"></i>
+                    <span>Scan Next</span>
+                </button>
+            </div>
+            
+            <!-- Camera Preview -->
+            <div class="camera-preview-container">
+                <div id="qr-reader">
+                    <div class="camera-placeholder">
+                        <i class="ph ph-camera"></i>
+                        <p>Camera preview will appear here</p>
+                    </div>
+                </div>
+                <div class="scanner-overlay" id="scanner-overlay" style="display: none;"></div>
+                <button type="button" class="camera-switch-btn" id="switch-camera" style="display: none;" title="Switch Camera">
+                    <i class="ph ph-camera-rotate"></i>
+                </button>
+            </div>
+            
+            <!-- Status -->
+            <div class="scanner-status-container">
+                <div id="camera-status" class="scanner-status status-info">
+                    Click "Start Scanner" to begin scanning
+                </div>
+            </div>
+            
+            <!-- Result Section -->
+            <div id="result-section" class="result-section" style="display: none;">
+                <div id="scan-result"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instructions -->
+    <div class="scanner-instructions">
+        <h4><i class="ph ph-info"></i> Instructions</h4>
+        <ul>
+            <li>Click <strong>Start Scanner</strong> to activate your camera</li>
+            <li>Hold the QR code steady within the scanning area</li>
+            <li>The scanner will automatically detect and process the code</li>
+            <li>After a successful scan, click <strong>Scan Next</strong> to continue</li>
+            <li>Use the camera switch button to toggle between front/back cameras</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- html5-qrcode library from CDN -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<!-- Custom QR Scanner Module -->
+<script src="{{ url_for('static', filename='js/qr-scanner.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the scanner with configuration
+    const scanner = new CampusQRScanner({
+        containerId: 'qr-reader',
+        eventId: {{ event.event_id }},
+        apiEndpoint: '/organizer/api/scan-qr',
+        statusElement: document.getElementById('camera-status'),
+        resultElement: document.getElementById('scan-result'),
+        resultSection: document.getElementById('result-section'),
+        startButton: document.getElementById('start-scan'),
+        stopButton: document.getElementById('stop-scan'),
+        scanNextButton: document.getElementById('scan-next'),
+        onScanSuccess: function(data) {
+            // Update attendance count on successful scan
+            updateStats();
+            // Show overlay
+            document.getElementById('scanner-overlay').style.display = 'none';
+        },
+        onScanError: function(data) {
+            // Handle errors if needed
+        }
+    });
+    
+    // Override start scanning to show overlay
+    const originalStart = scanner.startScanning.bind(scanner);
+    scanner.startScanning = async function() {
+        await originalStart();
+        if (scanner.isScanning) {
+            document.getElementById('scanner-overlay').style.display = 'flex';
+            document.getElementById('switch-camera').style.display = 'block';
+            // Remove placeholder
+            const placeholder = document.querySelector('.camera-placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+        }
+    };
+    
+    // Override stop scanning to hide overlay
+    const originalStop = scanner.stopScanning.bind(scanner);
+    scanner.stopScanning = async function() {
+        await originalStop();
+        document.getElementById('scanner-overlay').style.display = 'none';
+        document.getElementById('switch-camera').style.display = 'none';
+    };
+    
+    // Camera switch button
+    document.getElementById('switch-camera').addEventListener('click', function() {
+        scanner.switchCamera();
+    });
+    
+    // Function to update stats
+    function updateStats() {
+        fetch('{{ url_for("organizer.get_event_stats", event_id=event.event_id) }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('attended-count').textContent = data.attended;
+                    document.getElementById('remaining-count').textContent = data.remaining;
+                }
+            })
+            .catch(err => console.warn('Failed to update stats:', err));
+    }
+});
+</script>
+{% endblock %}

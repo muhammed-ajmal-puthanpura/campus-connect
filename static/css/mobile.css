@@ -1,0 +1,158 @@
+/* Mobile-only refinements for the dashboard UI */
+/* VISUAL UPGRADE: Premium mobile experience */
+
+/* =====================================================
+   MOBILE STABILITY & USABILITY FIXES
+   ===================================================== */
+
+/* Tablet: 768px and below */
+@media (max-width: 768px) {
+    .main-content {
+        padding-bottom: 5.5rem;
+    }
+
+    /* Ensure buttons never break */
+    .btn {
+        max-width: 100%;
+        overflow: visible;
+    }
+
+    /* Action buttons in tables wrap gracefully */
+    .table td:last-child {
+        min-width: 120px;
+    }
+
+    /* Navigation mobile menu improvements */
+    .nav-menu {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    /* Stat cards 2-column on tablet */
+    .dashboard-stats {
+        gap: 0.75rem;
+    }
+
+    /* PREMIUM: Mobile bottom nav icon layout */
+    .mobile-bottom-nav {
+        padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+    }
+
+    .mobile-bottom-nav a {
+        flex-direction: column;
+        gap: 0.2rem;
+        font-size: 0.65rem;
+        padding: 0.4rem 0.5rem;
+        min-width: 60px;
+    }
+
+    .mobile-bottom-nav a .ph {
+        font-size: 1.35em;
+        margin: 0;
+    }
+}
+
+/* Desktop: Hide mobile nav */
+@media (min-width: 769px) {
+    .mobile-bottom-nav {
+        display: none !important;
+    }
+}
+
+/* Small phones: 480px and below */
+@media (max-width: 480px) {
+    /* Ensure readable content */
+    body {
+        font-size: 14px;
+    }
+
+    /* Cards get less padding */
+    .event-card,
+    .stat-card,
+    .registration-card,
+    .approval-card,
+    .profile-card,
+    .feedback-card {
+        padding: 0.875rem;
+    }
+
+    /* Headers scale down */
+    h1 {
+        font-size: 1.35rem !important;
+    }
+
+    h2 {
+        font-size: 1.15rem !important;
+    }
+
+    /* Form card mobile */
+    .form-card {
+        padding: 1.25rem;
+    }
+
+    /* QR scanner fits screen */
+    #qr-reader {
+        min-height: 280px;
+    }
+
+    .qr-scanner-container {
+        padding: 1rem;
+    }
+    
+    /* Scanner page mobile optimizations */
+    .scanner-page {
+        padding: 0.75rem;
+    }
+    
+    .scanner-header h1 {
+        font-size: 1.25rem;
+    }
+    
+    .scanner-controls {
+        flex-direction: column;
+    }
+    
+    .scanner-btn {
+        width: 100%;
+    }
+    
+    .stats-bar {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+    }
+    
+    .camera-preview-container {
+        border-radius: var(--radius-sm);
+    }
+}
+
+/* Very small phones: 360px and below */
+@media (max-width: 360px) {
+    .container {
+        padding: 0 0.5rem;
+    }
+
+    .main-content {
+        padding: 0.75rem 0.5rem 5.5rem;
+    }
+
+    /* Stack filter form buttons */
+    .filter-form .btn {
+        flex: 1 1 100%;
+    }
+
+    /* Smaller bottom nav text */
+    .mobile-bottom-nav a {
+        font-size: 0.6rem;
+        min-width: 55px;
+        padding: 0.35rem 0.3rem;
+    }
+    
+    .mobile-bottom-nav a .ph {
+        font-size: 1.2em;
+    }
+}

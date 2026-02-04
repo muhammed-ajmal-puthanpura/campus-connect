@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Campus Events{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1><i class="ph ph-graduation-cap"></i> Create Account</h1>
+        <h2>Register for Campus Event System</h2>
+        
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" required 
+                       placeholder="John Doe" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username / Reg No</label>
+                <input type="text" id="username" name="username"
+                       placeholder="e.g., 22CS001" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required 
+                       placeholder="john.doe@campus.edu" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="role_id">Role</label>
+                <select id="role_id" name="role_id" required class="form-control">
+                    <option value="">Select Role</option>
+                    {% for role in roles %}
+                        <option value="{{ role.role_id }}">{{ role.role_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="dept_id">Department (Optional)</label>
+                <select id="dept_id" name="dept_id" class="form-control">
+                    <option value="">Select Department</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.dept_id }}">{{ dept.dept_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="Enter password" class="form-control">
+                <small class="text-muted">Minimum 8 characters.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required 
+                       placeholder="Re-enter password" class="form-control">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

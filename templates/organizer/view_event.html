@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+{% block title %}Event Details{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mobile-friendly action buttons grid */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.action-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1rem;
+    font-weight: 500;
+}
+
+.action-buttons .btn i {
+    font-size: 1.1rem;
+}
+
+/* Scan button prominent */
+.action-buttons .btn-scan {
+    background: var(--primary-color);
+    color: white;
+}
+
+.action-buttons .btn-scan:hover {
+    background: var(--primary-dark);
+}
+
+@media (max-width: 768px) {
+    .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .action-buttons .btn-scan {
+        grid-column: 1 / -1;
+        font-size: 1rem;
+        padding: 0.85rem;
+    }
+    
+    .action-buttons form {
+        display: contents;
+    }
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-medium);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.back-link:hover {
+    color: var(--primary-color);
+}
+
+/* Attendance row highlighting */
+.row-attended {
+    background: rgba(22, 163, 74, 0.08) !important;
+}
+
+.row-not-attended {
+    background: rgba(220, 38, 38, 0.04);
+}
+
+.attendance-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.attendance-icon.attended i {
+    color: #16a34a;
+    font-size: 1.3rem;
+}
+
+.attendance-icon.not-attended i {
+    color: #dc2626;
+    font-size: 1.3rem;
+}
+
+/* Mobile registration cards */
+.registrations-cards {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .registrations-table {
+        display: none !important;
+    }
+    
+    .registrations-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .reg-card {
+        background: var(--card-bg);
+        border-radius: 10px;
+        padding: 0.9rem;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .reg-card.attended {
+        background: rgba(22, 163, 74, 0.1);
+        border-color: rgba(22, 163, 74, 0.3);
+    }
+    
+    .reg-card.not-attended {
+        background: rgba(220, 38, 38, 0.05);
+        border-color: rgba(220, 38, 38, 0.15);
+    }
+    
+    .reg-card-icon {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .reg-card.attended .reg-card-icon {
+        background: rgba(22, 163, 74, 0.15);
+        color: #16a34a;
+    }
+    
+    .reg-card.not-attended .reg-card-icon {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+    }
+    
+    .reg-card-icon i {
+        font-size: 1.4rem;
+    }
+    
+    .reg-card-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .reg-card-name {
+        font-weight: 600;
+        color: var(--text-dark);
+        font-size: 0.95rem;
+        margin-bottom: 0.15rem;
+    }
+    
+    .reg-card-email {
+        font-size: 0.8rem;
+        color: var(--text-medium);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .reg-card-status {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+    
+    .reg-card.attended .reg-card-status {
+        background: rgba(22, 163, 74, 0.15);
+        color: #16a34a;
+    }
+    
+    .reg-card.not-attended .reg-card-status {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+    }
+    
+    .reg-card-action {
+        margin-top: 0.5rem;
+    }
+    
+    .reg-card-action .btn {
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('organizer.dashboard') }}" class="back-link">
+        <i class="ph ph-arrow-left"></i> Back to Dashboard
+    </a>
+    
+    <h1>{{ event.title }}</h1>
+    
+    <div class="action-buttons">
+        {% if event.status == 'approved' %}
+        <a href="{{ url_for('organizer.scan_qr', event_id=event.event_id) }}" class="btn btn-scan"><i class="ph ph-qr-code"></i> Scan QR</a>
+        {% endif %}
+        <a href="{{ url_for('organizer.edit_event', event_id=event.event_id) }}" class="btn btn-secondary"><i class="ph ph-pencil"></i> Edit</a>
+        {% if event.status == 'approved' %}
+        <a href="{{ url_for('organizer.download_approval_pdf', event_id=event.event_id) }}" class="btn btn-primary"><i class="ph ph-download"></i> Approval</a>
+        {% endif %}
+        {% if past_event_ids and event.event_id in past_event_ids %}
+        <a href="{{ url_for('organizer.event_feedback', event_id=event.event_id) }}" class="btn btn-secondary"><i class="ph ph-star"></i> Reviews</a>
+        {% endif %}
+        <form method="POST" action="{{ url_for('organizer.delete_event', event_id=event.event_id) }}" onsubmit="return confirmAction('Delete this event?')">
+            <button type="submit" class="btn btn-danger"><i class="ph ph-trash"></i> Delete</button>
+        </form>
+    </div>
+    <div class="event-details-card">
+        {% if event.poster_url %}
+            <img src="{{ url_for('static', filename=event.poster_url) }}" alt="{{ event.title }} poster" class="event-poster">
+        {% endif %}
+        <p><strong>Description:</strong> {{ event.description }}</p>
+        <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y') }}</p>
+        <p><strong>Time:</strong> {{ event.start_time.strftime('%H:%M') }} - {{ event.end_time.strftime('%H:%M') }}</p>
+        <p><strong>Mode:</strong> {% if (event.mode or '')|lower == 'online' %}Online{% else %}Offline{% endif %}</p>
+        <p><strong>Venue:</strong> {{ event.venue.venue_name if event.venue else '—' }}</p>
+        {% if (event.mode or '')|lower == 'online' and event.meeting_url %}
+        <p><strong>Meeting Link:</strong> <a href="{{ event.meeting_url }}" target="_blank">Join Meeting</a></p>
+        {% endif %}
+        <p><strong>Status:</strong> <span class="badge badge-{{ 'success' if event.status == 'approved' else 'warning' }}">{{ event.status }}</span></p>
+        {% if event.is_team_event %}
+        <p><strong>Event Type:</strong> <span class="badge" style="background: #7c3aed; color: white;"><i class="ph ph-users-three"></i> Team Event</span></p>
+        <p><strong>Team Size:</strong> {{ event.min_team_size }} - {{ event.max_team_size }} members</p>
+        {% endif %}
+    </div>
+    
+    {% if event.is_team_event and teams %}
+    <!-- Teams Section for Team Events -->
+    <div class="teams-section" style="margin-bottom: 2rem;">
+        <h2 style="margin-bottom: 1rem;"><i class="ph ph-users-three"></i> Teams ({{ teams|length }})</h2>
+        
+        <div class="teams-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+            {% for team in teams %}
+            <div class="team-card" style="background: var(--card-bg); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid var(--border-color); {% if team.prize_position %}border-left: 4px solid #f59e0b;{% endif %}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-dark);">
+                        <i class="ph ph-flag" style="color: var(--primary-color);"></i> {{ team.team_name }}
+                    </h3>
+                    <span class="badge badge-{{ 'success' if team.members|length >= event.min_team_size else 'warning' }}">
+                        {{ team.members|length }}/{{ event.max_team_size }}
+                    </span>
+                </div>
+                
+                {% if team.prize_position %}
+                <div style="margin-bottom: 0.75rem; padding: 0.5rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 8px; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="ph-fill ph-trophy" style="color: #d97706; font-size: 1.2rem;"></i>
+                    <span style="font-weight: 600; color: #92400e;">{{ team.prize_position }}{% if team.prize_title %} - {{ team.prize_title }}{% endif %}</span>
+                </div>
+                {% endif %}
+                
+                <div style="font-size: 0.85rem; color: var(--text-medium); margin-bottom: 0.75rem;">
+                    <i class="ph ph-crown"></i> Leader: {{ team.leader.full_name }}
+                </div>
+                
+                <div class="team-members" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    {% for member in team.members %}
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 6px;">
+                        {% if member.attendance %}
+                        <i class="ph-fill ph-check-circle" style="color: #16a34a;"></i>
+                        {% else %}
+                        <i class="ph-fill ph-x-circle" style="color: #dc2626;"></i>
+                        {% endif %}
+                        <span style="flex: 1; font-size: 0.9rem;">{{ member.student.full_name }}</span>
+                        {% if member.student_id == team.leader_id %}
+                        <span style="font-size: 0.7rem; padding: 0.15rem 0.4rem; background: var(--primary-color); color: white; border-radius: 4px;">Leader</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% set team_attended = team.members|selectattr('attendance')|list|length %}
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-medium);">
+                    <i class="ph ph-check-square"></i> Attendance: {{ team_attended }}/{{ team.members|length }} present
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Prize Assignment Section -->
+    <div class="prize-section" style="margin-bottom: 2rem; background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <h2 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="ph ph-trophy" style="color: #f59e0b;"></i> Assign Prizes
+        </h2>
+        
+        <form method="POST" action="{{ url_for('organizer.assign_prize', event_id=event.event_id) }}" class="prize-form">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label for="team_id"><i class="ph ph-users-three"></i> Select Team</label>
+                    <select name="team_id" id="team_id" class="form-control" required>
+                        <option value="">-- Choose Team --</option>
+                        {% for team in teams %}
+                        <option value="{{ team.team_id }}">{{ team.team_name }}{% if team.prize_position %} ({{ team.prize_position }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="prize_position"><i class="ph ph-medal"></i> Prize Position</label>
+                    <select name="prize_position" id="prize_position" class="form-control" required>
+                        <option value="">-- Select Position --</option>
+                        <option value="1st">🥇 1st Place</option>
+                        <option value="2nd">🥈 2nd Place</option>
+                        <option value="3rd">🥉 3rd Place</option>
+                        <option value="Special">⭐ Special Prize</option>
+                        <option value="Honorable">🎖️ Honorable Mention</option>
+                        <option value="Participant">📜 Participant (No Prize)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="prize_title"><i class="ph ph-text-t"></i> Prize Title (Optional)</label>
+                    <input type="text" name="prize_title" id="prize_title" class="form-control" placeholder="e.g., Winner, Best Innovation">
+                </div>
+                
+                <div class="form-group">
+                    <label for="certificate_template_id"><i class="ph ph-certificate"></i> Certificate Template</label>
+                    <select name="certificate_template_id" id="certificate_template_id" class="form-control">
+                        <option value="">-- Default Template --</option>
+                        {% for template in certificate_templates %}
+                        <option value="{{ template.template_id }}">{{ template.name }}{% if template.is_default %} (Default){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="ph ph-trophy"></i> Assign Prize
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearPrize()" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="ph ph-x"></i> Clear Prize
+                </button>
+            </div>
+            <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-medium);"><i class="ph ph-info"></i> Assigning a prize will automatically update certificates for team members who have attendance.</p>
+        </form>
+        
+        <!-- Prize Summary -->
+        {% set prize_teams = teams|selectattr('prize_position')|list %}
+        {% if prize_teams %}
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <h4 style="margin-bottom: 0.75rem; color: var(--text-medium);"><i class="ph ph-list-checks"></i> Prize Summary</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                {% for team in prize_teams %}
+                <div style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 20px; font-size: 0.85rem;">
+                    <i class="ph-fill ph-trophy" style="color: #d97706;"></i>
+                    <span style="font-weight: 600; color: #92400e;">{{ team.prize_position }}</span>
+                    <span style="color: #78350f;">{{ team.team_name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <script>
+    function clearPrize() {
+        const teamId = document.getElementById('team_id').value;
+        if (!teamId) {
+            alert('Please select a team first');
+            return;
+        }
+        if (confirm('Remove prize from selected team? This will update their certificates to participation certificates.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("organizer.clear_prize", event_id=event.event_id) }}';
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'team_id';
+            input.value = teamId;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    </script>
+    {% endif %}
+    
+    <div class="registrations-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+            <h2 style="margin-bottom: 0.25rem;">Registrations ({{ registrations|length }})</h2>
+            <p style="margin: 0; color: var(--text-medium);">Attended: {{ attended_count }}</p>
+        </div>
+        {% if attended_count > 0 %}
+        <div class="download-buttons" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="{{ url_for('organizer.download_attendance', event_id=event.event_id, format='excel') }}" class="btn btn-sm btn-success" style="display: inline-flex; align-items: center; gap: 0.3rem;">
+                <i class="ph ph-file-xls"></i> Excel
+            </a>
+            <a href="{{ url_for('organizer.download_attendance', event_id=event.event_id, format='pdf') }}" class="btn btn-sm btn-danger" style="display: inline-flex; align-items: center; gap: 0.3rem;">
+                <i class="ph ph-file-pdf"></i> PDF
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if (event.mode or '')|lower == 'online' %}
+    <div class="form-card" style="margin-bottom: 1.5rem;">
+        <h3>Upload Attendance (Excel)</h3>
+        <p class="text-muted">Supported columns: Email or Username (e.g., Email Address from Google Meet attendance).</p>
+        <form method="POST" action="{{ url_for('organizer.attendance_upload', event_id=event.event_id) }}" enctype="multipart/form-data">
+            <div class="form-row">
+                <input type="file" name="attendance_file" class="form-control" accept=".xlsx,.xls,.xlsm,.xltx,.xltm" required>
+                <button type="submit" class="btn btn-primary">Upload & Mark Attendance</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+    
+    <!-- Mobile: Card Layout for Registrations -->
+    <div class="registrations-cards">
+        {% for reg in registrations %}
+        <div class="reg-card {{ 'attended' if reg.attendance else 'not-attended' }}">
+            <div class="reg-card-icon">
+                {% if reg.attendance %}
+                <i class="ph-fill ph-check-circle"></i>
+                {% else %}
+                <i class="ph-fill ph-x-circle"></i>
+                {% endif %}
+            </div>
+            <div class="reg-card-info">
+                <div class="reg-card-name">{{ reg.student.full_name }}</div>
+                <div class="reg-card-email">{{ reg.student.email }}</div>
+                {% if not reg.attendance %}
+                <div class="reg-card-action">
+                    <form method="POST" action="{{ url_for('organizer.mark_attendance', registration_id=reg.registration_id) }}">
+                        <button type="submit" class="btn btn-sm btn-primary">Mark Present</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            <span class="reg-card-status">{{ 'Present' if reg.attendance else 'Absent' }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Desktop: Table Layout for Registrations -->
+    <div class="registrations-table">
+    <table class="table">
+        <thead><tr><th>Student</th><th>Email</th><th>Registered At</th><th>Attendance</th></tr></thead>
+        <tbody>
+            {% for reg in registrations %}
+            <tr class="{{ 'row-attended' if reg.attendance else 'row-not-attended' }}">
+                <td>{{ reg.student.full_name }}</td>
+                <td>{{ reg.student.email }}</td>
+                <td>{{ reg.registered_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if reg.attendance %}
+                        <span class="attendance-icon attended">
+                            <i class="ph-fill ph-check-circle"></i> Present
+                        </span>
+                    {% else %}
+                        <span class="attendance-icon not-attended">
+                            <i class="ph-fill ph-x-circle"></i> Absent
+                        </span>
+                        <form method="POST" action="{{ url_for('organizer.mark_attendance', registration_id=reg.registration_id) }}" style="display:inline-block; margin-left:8px;">
+                            <button type="submit" class="btn btn-sm btn-primary">Mark Present</button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <h2>Approval History</h2>
+    {% for approval in approvals %}
+    <div class="approval-card">
+        <p><strong>{{ approval.approver_role }}:</strong> {{ approval.approver.full_name }}</p>
+        <p><strong>Status:</strong> {{ approval.status }}</p>
+        <p><strong>Remarks:</strong> {{ approval.remarks or 'N/A' }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

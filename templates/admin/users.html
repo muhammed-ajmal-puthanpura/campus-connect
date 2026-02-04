@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-users-three"></i> User Management</h1>
+
+    <div class="form-card" style="margin-bottom: 24px;">
+        <h2>Filter Users</h2>
+        <form method="GET" action="{{ url_for('admin.users') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Search (name, username, or email)</label>
+                    <input type="text" name="q" class="form-control" value="{{ search or '' }}" placeholder="Search users..." autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="role_id" class="form-control">
+                        <option value="">All Roles</option>
+                        {% for role in roles %}
+                        <option value="{{ role.role_id }}" {% if role_filter and role_filter|string == role.role_id|string %}selected{% endif %}>{{ role.role_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <select name="dept_id" class="form-control">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.dept_id }}" {% if dept_filter and dept_filter|string == dept.dept_id|string %}selected{% endif %}>{{ dept.dept_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Reset</a>
+        </form>
+    </div>
+
+    <div class="form-card" style="margin-bottom: 24px;">
+        <h2>Create Organizer / HOD</h2>
+        <form method="POST" action="{{ url_for('admin.create_user') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Username / Reg No</label>
+                    <input type="text" name="username" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="role_id" class="form-control" required>
+                        <option value="">Select Role</option>
+                        {% for role in roles %}
+                        <option value="{{ role.role_id }}">{{ role.role_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Department (required for HOD)</label>
+                    <select name="dept_id" class="form-control">
+                        <option value="">Select Department</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.dept_id }}">{{ dept.dept_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create User</button>
+        </form>
+    </div>
+
+    <div class="form-card" style="margin-bottom: 24px;">
+        <h2>Bulk Upload Students (CSV/XLSX)</h2>
+        <p class="text-muted">Required columns: full_name, email. Optional: username, dept_name, dept_id, password. If password is missing, the default password below will be used.</p>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Template Department</label>
+                <select id="template-dept" class="form-control">
+                    <option value="">Select Department</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.dept_id }}">{{ dept.dept_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="display:flex; align-items:flex-end;">
+                <a id="download-template" class="btn btn-secondary" href="{{ url_for('admin.bulk_template') }}">Download Template</a>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('admin.bulk_upload_students') }}" enctype="multipart/form-data">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Upload File</label>
+                    <input type="file" name="file" class="form-control" accept=".csv,.xlsx" required>
+                </div>
+                <div class="form-group">
+                    <label>Default Password (optional)</label>
+                    <input type="text" name="default_password" class="form-control" placeholder="Use if file has no password column">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload Students</button>
+        </form>
+        <div style="margin-top: 12px;">
+            <strong>Sample CSV:</strong>
+            <pre>full_name,username,email,dept_name,password
+John Doe,22CS001,john.doe@campus.edu,Computer Science,Student@123
+Jane Smith,22EC002,jane.smith@campus.edu,Electronics,Student@123</pre>
+        </div>
+    </div>
+
+    <h2>All Users</h2>
+    <table class="table" id="users-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.full_name }}</td>
+                <td>{{ user.username or '—' }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                    {% set role_name = user.role.role_name if user.role else 'Unknown' %}
+                    {% set role_lower = role_name|lower %}
+                    {% if role_lower == 'admin' %}
+                        {% set badge_class = 'badge-danger' %}
+                    {% elif role_lower == 'principal' %}
+                        {% set badge_class = 'badge-warning' %}
+                    {% elif role_lower == 'hod' %}
+                        {% set badge_class = 'badge-warning' %}
+                    {% elif role_lower in ['event organizer', 'organizer'] %}
+                        {% set badge_class = 'badge-success' %}
+                    {% elif role_lower == 'student' %}
+                        {% set badge_class = 'badge-secondary' %}
+                    {% else %}
+                        {% set badge_class = 'badge-secondary' %}
+                    {% endif %}
+                    <span class="badge {{ badge_class }}">{{ role_name }}</span>
+                </td>
+                <td>{{ user.department.dept_name if user.department else '—' }}</td>
+                <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}</td>
+                <td>
+                    <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}" class="btn btn-sm btn-secondary">Edit</a>
+                    {% if role_lower != 'admin' %}
+                        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.user_id) }}" onsubmit="return confirmAction('Delete this user?')" style="display:inline-block;">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    {% else %}
+                        <span class="text-muted">Protected</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    const deptSelect = document.getElementById('template-dept');
+    const downloadLink = document.getElementById('download-template');
+
+    if (deptSelect && downloadLink) {
+        deptSelect.addEventListener('change', () => {
+            const deptId = deptSelect.value;
+            const baseUrl = "{{ url_for('admin.bulk_template') }}";
+            downloadLink.href = deptId ? `${baseUrl}?dept_id=${deptId}` : baseUrl;
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Feedback{% endblock %}
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-chat-circle-text"></i> Student Feedback</h1>
+    <p><strong>Average Rating:</strong> {{ avg_rating }} / 5</p>
+    <div class="form-card" style="margin: 16px 0 24px;">
+        <h2>Filter Feedback</h2>
+        <form method="GET" action="{{ url_for('admin.feedback') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date From</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Date To</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Department (Venue)</label>
+                    <select name="dept_id" class="form-control">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.dept_id }}" {% if dept_filter and dept_filter|string == dept.dept_id|string %}selected{% endif %}>{{ dept.dept_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Organizer</label>
+                    <select name="organizer_id" class="form-control">
+                        <option value="">All Organizers</option>
+                        {% for org in organizers %}
+                        <option value="{{ org.user_id }}" {% if organizer_filter and organizer_filter|string == org.user_id|string %}selected{% endif %}>{{ org.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Event</label>
+                    <div class="searchable-select" id="event-dropdown">
+                        <input type="hidden" name="event_id" id="event-id" value="{{ event_filter or '' }}">
+                        <input type="text" class="form-control searchable-input" id="event-search" placeholder="Search or select event..." autocomplete="off"
+                            value="{% for ev in events %}{% if event_filter and event_filter|string == ev.event_id|string %}{{ ev.title }}{% endif %}{% endfor %}">
+                        <div class="searchable-options" id="event-options">
+                            <div class="searchable-option" data-value="">All Events</div>
+                            {% for ev in events %}
+                            <div class="searchable-option" data-value="{{ ev.event_id }}">{{ ev.title }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{{ url_for('admin.feedback') }}" class="btn btn-secondary">Reset</a>
+        </form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Date</th>
+                    <th>Venue</th>
+                    <th>Average Rating</th>
+                    <th>Feedback Count</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary %}
+                {% set ev = row[0] %}
+                <tr>
+                    <td>{{ ev.title }}</td>
+                    <td>{{ ev.date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ ev.venue.venue_name if ev.venue else '—' }}</td>
+                    <td>{{ '%.2f'|format(row[1] or 0) }}</td>
+                    <td>{{ row[2] }}</td>
+                    <td>
+                        <a href="{{ url_for('admin.feedback_event', event_id=ev.event_id) }}" class="btn btn-sm">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not summary %}
+                <tr>
+                    <td colspan="6">No feedback found for the selected filters.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<style>
+.searchable-select {
+    position: relative;
+}
+.searchable-input {
+    cursor: pointer;
+}
+.searchable-options {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 0 0 8px 8px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.searchable-options.show {
+    display: block;
+}
+.searchable-option {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color, #eee);
+}
+.searchable-option:last-child {
+    border-bottom: none;
+}
+.searchable-option:hover, .searchable-option.highlighted {
+    background: var(--primary-color, #4f46e5);
+    color: white;
+}
+.searchable-option.hidden {
+    display: none;
+}
+</style>
+<script>
+(function() {
+    const container = document.getElementById('event-dropdown');
+    const input = document.getElementById('event-search');
+    const hidden = document.getElementById('event-id');
+    const optionsDiv = document.getElementById('event-options');
+    
+    if (!container || !input || !hidden || !optionsDiv) return;
+    
+    const options = Array.from(optionsDiv.querySelectorAll('.searchable-option'));
+    let highlighted = -1;
+    
+    // Show dropdown on focus/click
+    input.addEventListener('focus', () => optionsDiv.classList.add('show'));
+    input.addEventListener('click', () => optionsDiv.classList.add('show'));
+    
+    // Filter options on input
+    input.addEventListener('input', function() {
+        const term = this.value.trim().toLowerCase();
+        highlighted = -1;
+        
+        options.forEach((opt, idx) => {
+            const text = opt.textContent.toLowerCase();
+            const match = !term || text.includes(term);
+            opt.classList.toggle('hidden', !match);
+            opt.classList.remove('highlighted');
+        });
+        
+        optionsDiv.classList.add('show');
+    });
+    
+    // Keyboard navigation
+    input.addEventListener('keydown', function(e) {
+        const visible = options.filter(o => !o.classList.contains('hidden'));
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlighted = Math.min(highlighted + 1, visible.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlighted = Math.max(highlighted - 1, 0);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlighted >= 0 && visible[highlighted]) {
+                selectOption(visible[highlighted]);
+            }
+        } else if (e.key === 'Escape') {
+            optionsDiv.classList.remove('show');
+        }
+        
+        visible.forEach((o, i) => o.classList.toggle('highlighted', i === highlighted));
+        if (visible[highlighted]) visible[highlighted].scrollIntoView({block: 'nearest'});
+    });
+    
+    // Click to select
+    options.forEach(opt => {
+        opt.addEventListener('click', () => selectOption(opt));
+    });
+    
+    function selectOption(opt) {
+        hidden.value = opt.dataset.value;
+        input.value = opt.dataset.value ? opt.textContent : '';
+        optionsDiv.classList.remove('show');
+        options.forEach(o => o.classList.remove('hidden', 'highlighted'));
+    }
+    
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+        if (!container.contains(e.target)) {
+            optionsDiv.classList.remove('show');
+        }
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Approve Event{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>Review Event: {{ event.title }}</h1>
+    <div class="event-details-card">
+        {% if event.poster_url %}
+            <img src="{{ url_for('static', filename=event.poster_url) }}" alt="{{ event.title }} poster" class="event-poster">
+        {% endif %}
+        <p><strong>Description:</strong> {{ event.description }}</p>
+        <p><strong>Date:</strong> {{ event.date.strftime('%B %d, %Y') }}</p>
+        <p><strong>Venue:</strong> {{ event.venue.venue_name }}</p>
+        {% if hod_approval %}
+        <p><strong>HOD Approval:</strong> {{ hod_approval.status }} - {{ hod_approval.remarks }}</p>
+        {% endif %}
+    </div>
+    <form method="POST">
+        <div class="form-group">
+            <label>Remarks</label>
+            <textarea name="remarks" class="form-control" rows="3"></textarea>
+        </div>
+        <button type="submit" name="action" value="approve" class="btn btn-success"><i class="ph ph-check-circle"></i> Approve</button>
+        <button type="submit" name="action" value="reject" class="btn btn-danger"><i class="ph ph-x-circle"></i> Reject</button>
+    </form>
+</div>
+{% endblock %}

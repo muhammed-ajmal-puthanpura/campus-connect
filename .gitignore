@@ -1,0 +1,38 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment variables
+.env
+
+# Instance folder
+instance/
+
+# IDE
+.vscode/
+.idea/
+
+# Certificates (sensitive)
+certs/
+
+# Uploads (user data)
+static/uploads/
+
+# Database
+*.db
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

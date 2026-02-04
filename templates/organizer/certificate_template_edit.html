@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}Edit Template{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Interactive Template Editor</h1>
+        <p class="text-muted">Drag each label to set positions. Save to apply for future certificates.</p>
+    </div>
+
+    <div class="template-editor">
+        <div class="template-canvas" id="templateCanvas">
+            <img src="{{ url_for('static', filename=template.image_url) }}" alt="{{ template.name }}" id="templateImage" draggable="false">
+            <div class="template-label" data-field="student_name">Student Name</div>
+            <div class="template-label" data-field="event_title">Event Title</div>
+            <div class="template-label" data-field="event_date">Event Date</div>
+            <div class="template-label" data-field="organizer_name">Organizer Name</div>
+            <div class="template-label" data-field="issue_date">Issue Date</div>
+        </div>
+    </div>
+
+    <div class="template-editor" style="margin-top: 1.25rem;">
+        <h3 style="margin-bottom: 0.75rem;">Text Styling</h3>
+        <p class="text-muted" style="margin-bottom: 0.75rem;">Set font size, color, and weight for each field.</p>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Font Size</th>
+                        <th>Color</th>
+                        <th>Bold</th>
+                        <th>Font</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Student Name</td>
+                        <td><input type="number" class="form-control style-input" data-field="student_name" data-style="font_size" min="8" max="72" step="1"></td>
+                        <td><input type="color" class="form-control style-input" data-field="student_name" data-style="color"></td>
+                        <td><input type="checkbox" class="style-input" data-field="student_name" data-style="bold"></td>
+                        <td>
+                            <select class="form-control style-input" data-field="student_name" data-style="font">
+                                <option value="Times-Roman">Times (Formal)</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Courier">Courier</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Event Title</td>
+                        <td><input type="number" class="form-control style-input" data-field="event_title" data-style="font_size" min="8" max="72" step="1"></td>
+                        <td><input type="color" class="form-control style-input" data-field="event_title" data-style="color"></td>
+                        <td><input type="checkbox" class="style-input" data-field="event_title" data-style="bold"></td>
+                        <td>
+                            <select class="form-control style-input" data-field="event_title" data-style="font">
+                                <option value="Times-Roman">Times (Formal)</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Courier">Courier</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Event Date</td>
+                        <td><input type="number" class="form-control style-input" data-field="event_date" data-style="font_size" min="8" max="72" step="1"></td>
+                        <td><input type="color" class="form-control style-input" data-field="event_date" data-style="color"></td>
+                        <td><input type="checkbox" class="style-input" data-field="event_date" data-style="bold"></td>
+                        <td>
+                            <select class="form-control style-input" data-field="event_date" data-style="font">
+                                <option value="Times-Roman">Times (Formal)</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Courier">Courier</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Organizer Name</td>
+                        <td><input type="number" class="form-control style-input" data-field="organizer_name" data-style="font_size" min="8" max="72" step="1"></td>
+                        <td><input type="color" class="form-control style-input" data-field="organizer_name" data-style="color"></td>
+                        <td><input type="checkbox" class="style-input" data-field="organizer_name" data-style="bold"></td>
+                        <td>
+                            <select class="form-control style-input" data-field="organizer_name" data-style="font">
+                                <option value="Times-Roman">Times (Formal)</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Courier">Courier</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Issue Date</td>
+                        <td><input type="number" class="form-control style-input" data-field="issue_date" data-style="font_size" min="8" max="72" step="1"></td>
+                        <td><input type="color" class="form-control style-input" data-field="issue_date" data-style="color"></td>
+                        <td><input type="checkbox" class="style-input" data-field="issue_date" data-style="bold"></td>
+                        <td>
+                            <select class="form-control style-input" data-field="issue_date" data-style="font">
+                                <option value="Times-Roman">Times (Formal)</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Courier">Courier</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('organizer.edit_certificate_template', template_id=template.template_id) }}" id="positionsForm">
+        <input type="hidden" name="positions_json" id="positionsInput">
+        <div style="margin-top: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="submit" class="btn btn-primary">Save Positions</button>
+            <a href="{{ url_for('organizer.certificate_templates') }}" class="btn btn-secondary">Back</a>
+        </div>
+    </form>
+
+    <div class="template-editor" style="margin-top: 1.5rem;" id="previewSection">
+        <h3 style="margin-bottom: 0.75rem;">Preview</h3>
+        <p class="text-muted" style="margin-bottom: 0.75rem;">This preview uses sample text to show how the certificate will look.</p>
+        <div class="template-canvas" id="previewCanvas">
+            <img src="{{ url_for('static', filename=template.image_url) }}" alt="{{ template.name }} preview" id="previewImage" draggable="false">
+            <div class="template-preview-label" data-field="student_name">Alex Johnson</div>
+            <div class="template-preview-label" data-field="event_title">Tech Innovation Summit</div>
+            <div class="template-preview-label" data-field="event_date">February 04, 2026</div>
+            <div class="template-preview-label" data-field="organizer_name">Event Organizer</div>
+            <div class="template-preview-label" data-field="issue_date">Issued: February 04, 2026</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const templateCanvas = document.getElementById('templateCanvas');
+    const templateImage = document.getElementById('templateImage');
+    const labels = Array.from(document.querySelectorAll('.template-label'));
+    const positionsInput = document.getElementById('positionsInput');
+    const positionsForm = document.getElementById('positionsForm');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewImage = document.getElementById('previewImage');
+    const previewLabels = Array.from(document.querySelectorAll('.template-preview-label'));
+    const styleInputs = Array.from(document.querySelectorAll('.style-input'));
+
+    const existingPositions = {{ positions|tojson }};
+    const defaultPositions = {
+        student_name: { x: 0.5, y: 0.42 },
+        event_title: { x: 0.5, y: 0.52 },
+        event_date: { x: 0.5, y: 0.60 },
+        organizer_name: { x: 0.75, y: 0.80 },
+        issue_date: { x: 0.15, y: 0.80 }
+    };
+
+    const defaultStyles = {
+        student_name: { font_size: 30, color: '#111827', bold: true, font: 'Times-Roman' },
+        event_title: { font_size: 18, color: '#111827', bold: true, font: 'Times-Roman' },
+        event_date: { font_size: 12, color: '#111827', bold: false, font: 'Helvetica' },
+        organizer_name: { font_size: 12, color: '#111827', bold: true, font: 'Helvetica' },
+        issue_date: { font_size: 10, color: '#111827', bold: false, font: 'Helvetica' }
+    };
+
+    function applyPositions() {
+        const rect = templateCanvas.getBoundingClientRect();
+        labels.forEach(label => {
+            const field = label.dataset.field;
+            const pos = existingPositions[field] || defaultPositions[field];
+            if (!pos) return;
+            label.style.left = (pos.x * rect.width) + 'px';
+            label.style.top = (pos.y * rect.height) + 'px';
+        });
+    }
+
+    function applyPreviewPositions() {
+        if (!previewCanvas) return;
+        const rect = previewCanvas.getBoundingClientRect();
+        previewLabels.forEach(label => {
+            const field = label.dataset.field;
+            const pos = existingPositions[field] || defaultPositions[field];
+            if (!pos) return;
+            label.style.left = (pos.x * rect.width) + 'px';
+            label.style.top = (pos.y * rect.height) + 'px';
+        });
+    }
+
+    function getStylePayload() {
+        const styles = {};
+        styleInputs.forEach(input => {
+            const field = input.dataset.field;
+            const styleKey = input.dataset.style;
+            if (!styles[field]) {
+                styles[field] = {};
+            }
+            if (styleKey === 'bold') {
+                styles[field][styleKey] = input.checked;
+            } else if (styleKey === 'font_size') {
+                styles[field][styleKey] = parseInt(input.value || '12', 10);
+            } else if (styleKey === 'font') {
+                styles[field][styleKey] = input.value || 'Times-Roman';
+            } else {
+                styles[field][styleKey] = input.value || '#111827';
+            }
+        });
+        return styles;
+    }
+
+    function applyPreviewStyles() {
+        if (!previewCanvas) return;
+        const liveStyles = getStylePayload();
+        previewLabels.forEach(label => {
+            const field = label.dataset.field;
+            const base = defaultStyles[field] || { font_size: 12, color: '#111827', bold: false, font: 'Helvetica' };
+            const stored = liveStyles[field] || {};
+            const fontSize = stored.font_size ?? base.font_size;
+            const color = stored.color || base.color;
+            const bold = stored.bold ?? base.bold;
+            const font = stored.font || base.font;
+
+            label.style.fontSize = fontSize + 'px';
+            label.style.color = color;
+            label.style.fontWeight = bold ? '700' : '500';
+            label.style.fontFamily = font === 'Times-Roman'
+                ? '"Times New Roman", Times, serif'
+                : (font === 'Courier' ? '"Courier New", Courier, monospace' : 'Helvetica, Arial, sans-serif');
+        });
+    }
+
+    function initializeStyleInputs() {
+        styleInputs.forEach(input => {
+            const field = input.dataset.field;
+            const styleKey = input.dataset.style;
+            const stored = (existingPositions[field] && existingPositions[field].style) || {};
+            const base = defaultStyles[field] || {};
+            const value = stored[styleKey] ?? base[styleKey];
+            if (styleKey === 'bold') {
+                input.checked = Boolean(value);
+            } else if (styleKey === 'font_size') {
+                input.value = value || 12;
+            } else if (styleKey === 'color') {
+                input.value = value || '#111827';
+            } else if (styleKey === 'font') {
+                input.value = value || 'Times-Roman';
+            }
+        });
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
+    let activeLabel = null;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    function getPoint(event) {
+        if (event.touches && event.touches[0]) return event.touches[0];
+        return event;
+    }
+
+    function startDrag(event, label) {
+        if (event.preventDefault) event.preventDefault();
+        activeLabel = label;
+        const rect = label.getBoundingClientRect();
+        const point = getPoint(event);
+        offsetX = point.clientX - rect.left;
+        offsetY = point.clientY - rect.top;
+        if (label.setPointerCapture && event.pointerId !== undefined) {
+            label.setPointerCapture(event.pointerId);
+        }
+    }
+
+    labels.forEach(label => {
+        label.addEventListener('pointerdown', (event) => startDrag(event, label));
+        label.addEventListener('mousedown', (event) => startDrag(event, label));
+        label.addEventListener('touchstart', (event) => startDrag(event, label), { passive: false });
+    });
+
+    function moveDrag(event) {
+        if (!activeLabel) return;
+        if (event.preventDefault) event.preventDefault();
+        const canvasRect = templateCanvas.getBoundingClientRect();
+        const labelRect = activeLabel.getBoundingClientRect();
+        const point = getPoint(event);
+
+        const newLeft = clamp(point.clientX - canvasRect.left - offsetX, 0, canvasRect.width - labelRect.width);
+        const newTop = clamp(point.clientY - canvasRect.top - offsetY, 0, canvasRect.height - labelRect.height);
+
+        activeLabel.style.left = newLeft + 'px';
+        activeLabel.style.top = newTop + 'px';
+    }
+
+    function endDrag(event) {
+        if (activeLabel && activeLabel.releasePointerCapture && event.pointerId !== undefined) {
+            activeLabel.releasePointerCapture(event.pointerId);
+        }
+        activeLabel = null;
+    }
+
+    window.addEventListener('pointermove', moveDrag);
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+    window.addEventListener('mousemove', moveDrag);
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchmove', moveDrag, { passive: false });
+    window.addEventListener('touchend', endDrag);
+
+    positionsForm.addEventListener('submit', () => {
+        const rect = templateCanvas.getBoundingClientRect();
+        const payload = {};
+
+        const stylePayload = getStylePayload();
+
+        labels.forEach(label => {
+            const field = label.dataset.field;
+            const labelRect = label.getBoundingClientRect();
+            const xCenter = (labelRect.left - rect.left + labelRect.width / 2) / rect.width;
+            const yCenter = (labelRect.top - rect.top + labelRect.height / 2) / rect.height;
+            payload[field] = {
+                x: Math.round(xCenter * 10000) / 10000,
+                y: Math.round(yCenter * 10000) / 10000,
+                style: stylePayload[field] || {}
+            };
+        });
+
+        positionsInput.value = JSON.stringify(payload);
+    });
+
+    templateImage.addEventListener('load', applyPositions);
+    if (templateImage.complete) {
+        applyPositions();
+    }
+
+    initializeStyleInputs();
+    applyPreviewStyles();
+    applyPreviewPositions();
+
+    if (previewImage) {
+        previewImage.addEventListener('load', applyPreviewPositions);
+        if (previewImage.complete) {
+            applyPreviewPositions();
+        }
+    }
+
+    styleInputs.forEach(input => {
+        input.addEventListener('input', applyPreviewStyles);
+        input.addEventListener('change', applyPreviewStyles);
+    });
+
+    {% if show_preview %}
+    if (previewCanvas) {
+        previewCanvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    {% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Team Invitations{% endblock %}
+
+{% block extra_css %}
+<style>
+.invitation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.invitation-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: 1px solid var(--border-color);
+}
+
+.invitation-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.invitation-team {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.team-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.invitation-info h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.1rem;
+}
+
+.invitation-info p {
+    margin: 0;
+    color: var(--text-medium);
+    font-size: 0.9rem;
+}
+
+.invitation-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-medium);
+}
+
+.invitation-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-accept {
+    background: #16a34a;
+    color: white;
+}
+
+.btn-accept:hover {
+    background: #15803d;
+}
+
+.btn-reject {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-reject:hover {
+    background: #b91c1c;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: var(--card-bg);
+    border-radius: 12px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--text-light);
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    color: var(--text-medium);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: var(--text-light);
+}
+
+@media (max-width: 768px) {
+    .invitation-actions {
+        flex-direction: column;
+    }
+    
+    .invitation-actions form {
+        width: 100%;
+    }
+    
+    .invitation-actions .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-envelope"></i> Team Invitations</h1>
+    <p style="color: var(--text-medium); margin-bottom: 1.5rem;">Invitations to join teams for group events</p>
+    
+    {% if invitations %}
+    <div class="invitation-list">
+        {% for invite in invitations %}
+        <div class="invitation-card">
+            <div class="invitation-header">
+                <div class="invitation-team">
+                    <div class="team-icon">
+                        <i class="ph ph-users-three"></i>
+                    </div>
+                    <div class="invitation-info">
+                        <h3>{{ invite.team.team_name }}</h3>
+                        <p>{{ invite.team.event.title }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="invitation-meta">
+                <span><i class="ph ph-crown"></i> Leader: {{ invite.team.leader.full_name }}</span>
+                <span><i class="ph ph-calendar"></i> {{ invite.team.event.date.strftime('%b %d, %Y') }}</span>
+                <span><i class="ph ph-users"></i> {{ invite.team.members|length }}/{{ invite.team.event.max_team_size }} members</span>
+                <span><i class="ph ph-clock"></i> Invited {{ invite.created_at.strftime('%b %d') }}</span>
+            </div>
+            
+            <div class="invitation-actions">
+                <form method="POST" action="{{ url_for('student.respond_invitation', invitation_id=invite.invitation_id, action='accept') }}">
+                    <button type="submit" class="btn btn-accept">
+                        <i class="ph ph-check"></i> Accept & Join Team
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('student.respond_invitation', invitation_id=invite.invitation_id, action='reject') }}">
+                    <button type="submit" class="btn btn-reject">
+                        <i class="ph ph-x"></i> Decline
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="ph ph-envelope-open"></i>
+        <h3>No Pending Invitations</h3>
+        <p>You don't have any team invitations at the moment.</p>
+        <a href="{{ url_for('student.events') }}" class="btn btn-primary" style="margin-top: 1rem;">
+            <i class="ph ph-calendar"></i> Browse Events
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

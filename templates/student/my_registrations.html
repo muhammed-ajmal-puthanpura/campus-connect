@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}My Registrations{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1><i class="ph ph-ticket"></i> My Event Registrations</h1>
+
+    <form method="GET" class="filter-form">
+        <input
+            type="text"
+            name="q"
+            placeholder="Search tickets by event title"
+            value="{{ search_query }}"
+            aria-label="Search tickets by event title"
+            class="form-control"
+            autocomplete="off"
+        />
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+    
+    {% if registration_data %}
+        <div class="registrations-grid">
+            {% for data in registration_data %}
+            <div class="registration-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3>{{ data.event.title }}</h3>
+                    {% if data.event.is_team_event %}
+                    <span class="badge" style="background: #7c3aed; color: white;"><i class="ph ph-users-three"></i> Team Event</span>
+                    {% endif %}
+                </div>
+                <div class="registration-info">
+                    <p><strong>Date:</strong> {{ data.event.date.strftime('%B %d, %Y') }}</p>
+                    <p><strong>Time:</strong> {{ data.event.start_time.strftime('%H:%M') }} - {{ data.event.end_time.strftime('%H:%M') }}</p>
+                    <p><strong>Mode:</strong> {% if (data.event.mode or '')|lower == 'online' %}Online{% else %}Offline{% endif %}</p>
+                    <p><strong>Venue:</strong> {{ data.event.venue.venue_name if data.event.venue else '—' }}</p>
+                    {% if (data.event.mode or '')|lower == 'online' and data.event.meeting_url %}
+                        <p><strong>Meeting Link:</strong> <a href="{{ data.event.meeting_url }}" target="_blank">Open Meeting</a></p>
+                    {% endif %}
+                    <p><strong>Registered:</strong> {{ data.registration.registered_at.strftime('%B %d, %Y %H:%M') }}</p>
+                    
+                    {% if data.registration.team %}
+                    <div style="background: rgba(124, 58, 237, 0.1); border-radius: 8px; padding: 0.75rem; margin-top: 0.75rem;">
+                        <p style="margin: 0;"><strong><i class="ph ph-users-three"></i> Team:</strong> {{ data.registration.team.team_name }}</p>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--text-medium);">
+                            {{ data.registration.team.members|length }}/{{ data.event.max_team_size }} members
+                            {% if data.registration.team.leader_id == session.user_id %}
+                            <span class="badge" style="background: #7c3aed; color: white; font-size: 0.7rem; margin-left: 0.5rem;">Leader</span>
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('student.manage_team', team_id=data.registration.team.team_id) }}" class="btn btn-sm" style="background: #7c3aed; color: white; margin-top: 0.5rem;">
+                            <i class="ph ph-gear"></i> Manage Team
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="qr-section">
+                    <h4>Your QR Ticket</h4>
+                    <img src="data:image/png;base64,{{ data.qr_image }}" alt="QR Code" class="qr-code">
+                    <p class="qr-instruction">Show this QR code at the event entrance</p>
+                    {% if data.attended %}
+                        <span class="badge badge-success"><i class="ph ph-check-circle"></i> Attendance Marked</span>
+                    {% else %}
+                        <span class="badge badge-warning"><i class="ph ph-hourglass"></i> Not Yet Attended</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>You haven't registered for any events yet.</p>
+            <a href="{{ url_for('student.events') }}" class="btn btn-primary">Browse Events</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
