@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Guest Management</h2>
+<form method="post" action="{{ url_for('admin.guests_update_settings') }}">
+  <label>Enable Guest Login: <input type="checkbox" name="guest_enabled" value="1" {% if guest_enabled and guest_enabled.value=='1' %}checked{% endif %}></label>
+  <label>Validity (days): <input type="number" name="guest_validity_days" value="{{ guest_validity.value if guest_validity else 30 }}"></label>
+  <label>Cleanup Policy: <select name="guest_cleanup_policy"><option value="archive" {% if cleanup_policy and cleanup_policy.value=='archive' %}selected{% endif %}>Archive</option><option value="delete" {% if cleanup_policy and cleanup_policy.value=='delete' %}selected{% endif %}>Delete</option></select></label>
+  <button type="submit">Save</button>
+</form>
+
+<h3>Guests</h3>
+<table>
+  <tr><th>ID</th><th>Name</th><th>Mobile</th><th>Created</th><th>Expiry</th><th>Status</th><th>Actions</th></tr>
+  {% for g in guests %}
+  <tr>
+    <td>{{ g.user_id }}</td>
+    <td>{{ g.full_name }}</td>
+    <td>{{ g.mobile_number }}</td>
+    <td>{{ g.created_at }}</td>
+    <td>{{ g.expiry_date }}</td>
+    <td>{{ g.guest_status }}</td>
+    <td>
+      <form method="post" action="{{ url_for('admin.guests_deactivate', user_id=g.user_id) }}" style="display:inline"><button type="submit">Deactivate</button></form>
+      <form method="post" action="{{ url_for('admin.guests_delete', user_id=g.user_id) }}" style="display:inline" onsubmit="return confirm('Delete guest and related data?')"><button type="submit">Delete</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<form method="post" action="{{ url_for('admin.guests_cleanup') }}"><button type="submit">Run Cleanup Now</button></form>
+{% endblock %}

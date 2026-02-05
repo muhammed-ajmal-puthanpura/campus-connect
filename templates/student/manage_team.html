@@ -250,7 +250,7 @@
         {% if members|length >= event.max_team_size %}
         <p class="text-muted">Team is full ({{ event.max_team_size }} members maximum)</p>
         {% else %}
-        <p class="text-muted">Enter the username of the student you want to invite:</p>
+        <p class="text-muted">Enter the username of the student or guest you want to invite:</p>
         <form method="POST" action="{{ url_for('student.invite_member', team_id=team.team_id) }}" class="invite-form">
             <input type="text" name="username" class="form-control" placeholder="Enter username..." required>
             <button type="submit" class="btn btn-primary">

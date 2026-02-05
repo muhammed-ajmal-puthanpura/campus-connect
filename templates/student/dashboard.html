@@ -8,6 +8,53 @@
         <h1><i class="ph ph-books"></i> Student Dashboard</h1>
         <p>Welcome, {{ session.full_name }}!</p>
     </div>
+    {% if (session.role_name and session.role_name|lower == 'guest') or session.get('is_guest') %}
+    <div style="background: linear-gradient(135deg,#fff7ed,#ffedd5); border-left: 4px solid #f97316; padding: 0.9rem 1rem; border-radius: 8px; margin-bottom:1rem;">
+        <strong>Note for guests:</strong>
+        <span style="margin-left:0.5rem;">This is a temporary guest account (valid for 30 days). Make sure to download any certificates or important data before it expires.</span>
+    </div>
+    {% endif %}
+    
+    <!-- Notifications Section -->
+    {% if notifications %}
+        <div class="notifications-section" style="margin-bottom: 1.5rem; position: fixed; top: 1.5rem; right: 1.5rem; z-index: 9999; width: 350px; max-width: 90vw;">
+            {% for notif in notifications[:3] %}
+            <a href="{{ notif.link }}" class="notification-card notification-{{ notif.type }} student-toast" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; border-radius: 10px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.10); animation: fadeout 5s linear forwards; {% if notif.type == 'certificate' %}background: linear-gradient(135deg, #fef3c7, #fde68a); border-left: 4px solid #f59e0b;{% elif notif.type == 'feedback' %}background: linear-gradient(135deg, #e0e7ff, #c7d2fe); border-left: 4px solid #6366f1;{% elif notif.type == 'invitation' %}background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-left: 4px solid #16a34a;{% elif notif.type == 'reminder' %}background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-left: 4px solid #2563eb;{% else %}background: var(--bg-light); border-left: 4px solid var(--primary-color);{% endif %}">
+                <i class="ph-fill {{ notif.icon }}" style="font-size: 1.5rem; flex-shrink: 0; {% if notif.type == 'certificate' %}color: #d97706;{% elif notif.type == 'feedback' %}color: #6366f1;{% elif notif.type == 'invitation' %}color: #16a34a;{% elif notif.type == 'reminder' %}color: #2563eb;{% else %}color: var(--primary-color);{% endif %}"></i>
+                <div style="flex: 1; min-width: 0;">
+                    <p style="margin: 0; font-weight: 500; color: var(--text-dark);">{{ notif.message }}</p>
+                </div>
+                <i class="ph ph-caret-right" style="font-size: 1.2rem; color: var(--text-medium); flex-shrink: 0;"></i>
+            </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <style>
+    @keyframes fadeout {
+        0% { opacity: 1; transform: translateY(0); }
+        80% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(-20px); pointer-events: none; }
+    }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var key = 'dashboard_notifications_shown';
+        var toasts = document.querySelectorAll('.student-toast');
+        if (!toasts || toasts.length === 0) return;
+
+        if (!sessionStorage.getItem(key)) {
+            // First time this session: show toasts, then hide after 5s and mark shown
+            setTimeout(function() {
+                toasts.forEach(function(el) { el.style.display = 'none'; });
+                try { sessionStorage.setItem(key, '1'); } catch (e) {}
+            }, 5000);
+        } else {
+            // Already shown in this session: hide immediately
+            toasts.forEach(function(el) { el.style.display = 'none'; });
+        }
+    });
+    </script>
 
     <div class="dashboard-stats">
         <div class="stat-card">

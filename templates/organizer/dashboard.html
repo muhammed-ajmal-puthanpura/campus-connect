@@ -131,6 +131,54 @@
 {% block content %}
 <div class="container">
     <h1><i class="ph ph-target"></i> Organizer Dashboard</h1>
+    
+    <!-- Notifications Section -->
+    {% if notifications %}
+        <div class="notifications-section" style="margin-bottom: 1.5rem; position: fixed; top: 1.5rem; right: 1.5rem; z-index: 9999; width: 350px; max-width: 90vw;">
+            {% for notif in notifications[:3] %}
+            <div class="notification-card notification-{{ notif.type }} organizer-toast" style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); animation: fadeout 5s linear forwards; {% if notif.type == 'success' %}background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-left: 4px solid #16a34a;{% elif notif.type == 'error' %}background: linear-gradient(135deg, #fee2e2, #fecaca); border-left: 4px solid #dc2626;{% elif notif.type == 'ready' %}background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-left: 4px solid #2563eb;{% else %}background: var(--bg-light); border-left: 4px solid var(--primary-color);{% endif %}">
+                <i class="ph-fill {{ notif.icon }}" style="font-size: 1.5rem; {% if notif.type == 'success' %}color: #16a34a;{% elif notif.type == 'error' %}color: #dc2626;{% elif notif.type == 'ready' %}color: #2563eb;{% else %}color: var(--primary-color);{% endif %}"></i>
+                <div style="flex: 1;">
+                    <p style="margin: 0; font-weight: 500; color: var(--text-dark);">{{ notif.message }}</p>
+                    {% if notif.remarks %}
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-medium);">Remarks: {{ notif.remarks }}</p>
+                    {% endif %}
+                    {% if notif.time %}
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--text-light);">{{ notif.time.strftime('%b %d, %H:%M') }}</p>
+                    {% endif %}
+                </div>
+                {% if notif.event_id %}
+                <a href="{{ url_for('organizer.view_event', event_id=notif.event_id) }}" class="btn btn-sm btn-secondary" style="white-space: nowrap;">View</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+    </div>
+    {% endif %}
+
+    <style>
+    @keyframes fadeout {
+        0% { opacity: 1; transform: translateY(0); }
+        80% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(-20px); pointer-events: none; }
+    }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var key = 'dashboard_notifications_shown';
+        var toasts = document.querySelectorAll('.organizer-toast');
+        if (!toasts || toasts.length === 0) return;
+
+        if (!sessionStorage.getItem(key)) {
+            setTimeout(function() {
+                toasts.forEach(function(el) { el.style.display = 'none'; });
+                try { sessionStorage.setItem(key, '1'); } catch (e) {}
+            }, 5000);
+        } else {
+            toasts.forEach(function(el) { el.style.display = 'none'; });
+        }
+    });
+    </script>
+    
     <div class="dashboard-stats">
         <div class="stat-card"><h3>{{ pending_count }}</h3><p>Pending</p></div>
         <div class="stat-card"><h3>{{ approved_count }}</h3><p>Approved</p></div>
@@ -197,7 +245,7 @@
                         <a href="{{ url_for('organizer.download_approval_pdf', event_id=event.event_id) }}" class="btn btn-sm btn-primary">Download Approval</a>
                         <a href="{{ url_for('organizer.scan_qr', event_id=event.event_id) }}" class="btn btn-sm btn-primary"><i class="ph ph-qr-code"></i> Scan</a>
                         {% endif %}
-                        <form method="POST" action="{{ url_for('organizer.delete_event', event_id=event.event_id) }}" style="display:inline-block;" onsubmit="return confirmAction('Delete this event?')">
+                        <form method="POST" action="{{ url_for('organizer.delete_event', event_id=event.event_id) }}" style="display:inline-block;" onsubmit="return confirmAction(this, 'Delete this event?')">
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
                         {% if past_event_ids and event.event_id in past_event_ids %}
@@ -209,5 +257,34 @@
             </tbody>
         </table>
     </div>
+    
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <nav class="pagination-nav" style="margin-top: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('organizer.dashboard', page=pagination.prev_num, q=search or '') }}" class="btn btn-secondary btn-sm">
+            <i class="ph ph-caret-left"></i> Previous
+        </a>
+        {% else %}
+        <span class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;">
+            <i class="ph ph-caret-left"></i> Previous
+        </span>
+        {% endif %}
+        
+        <span style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+            Page {{ pagination.page }} of {{ pagination.pages }}
+        </span>
+        
+        {% if pagination.has_next %}
+        <a href="{{ url_for('organizer.dashboard', page=pagination.next_num, q=search or '') }}" class="btn btn-secondary btn-sm">
+            Next <i class="ph ph-caret-right"></i>
+        </a>
+        {% else %}
+        <span class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;">
+            Next <i class="ph ph-caret-right"></i>
+        </span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

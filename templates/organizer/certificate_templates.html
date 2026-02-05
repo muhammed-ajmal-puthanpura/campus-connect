@@ -39,7 +39,7 @@
                     <button type="submit" class="btn btn-primary">Set Default</button>
                 </form>
                 {% endif %}
-                <form method="POST" action="{{ url_for('organizer.delete_certificate_template', template_id=template.template_id) }}" style="display:inline-block;" onsubmit="return confirmAction('Delete this template?')">
+                <form method="POST" action="{{ url_for('organizer.delete_certificate_template', template_id=template.template_id) }}" style="display:inline-block;" onsubmit="return confirmAction(this, 'Delete this template?')">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </div>

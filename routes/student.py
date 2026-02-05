@@ -17,7 +17,10 @@ def student_required(f):
     """Decorator to require student login"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('role_name', '').lower() != 'student':
+        # Allow regular students and guest users (role-based or legacy flag)
+        if 'user_id' not in session or not (
+            session.get('role_name', '').lower() in ('student', 'guest') or session.get('is_guest')
+        ):
             flash('Access denied', 'error')
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
@@ -30,10 +33,14 @@ def dashboard():
     """Student dashboard - view upcoming approved events"""
     # Get upcoming approved events
     today = date.today()
-    upcoming_events = Event.query.filter(
+    # For guests, hide campus-exclusive events
+    base_query = Event.query.filter(
         Event.status == 'approved',
         Event.date >= today
-    ).order_by(Event.date, Event.start_time).all()
+    )
+    if session.get('role_name', '').lower() == 'guest' or session.get('is_guest'):
+        base_query = base_query.filter(Event.is_campus_exclusive == False)
+    upcoming_events = base_query.order_by(Event.date, Event.start_time).all()
     
     # Get student's registrations
     student_id = session['user_id']
@@ -57,13 +64,112 @@ def dashboard():
         invitee_id=student_id,
         status='pending'
     ).count()
+    
+    # Build notifications for student
+    notifications = []
+    now = datetime.now()
+    from datetime import timedelta
+    week_ago = now - timedelta(days=7)
+    
+    # 1. New certificates (issued in last 7 days)
+    new_certificates = Certificate.query.filter(
+        Certificate.student_id == student_id,
+        Certificate.issued_at >= week_ago
+    ).order_by(Certificate.issued_at.desc()).all()
+    
+    for cert in new_certificates:
+        event = Event.query.get(cert.event_id)
+        if event:
+            notifications.append({
+                'type': 'certificate',
+                'icon': 'ph-certificate',
+                'message': f'🎉 Hooray! Your certificate for "{event.title}" is ready!',
+                'link': url_for('student.my_certificates'),
+                'time': cert.issued_at
+            })
+    
+    # 2. Events awaiting feedback (attended but no feedback given)
+    attended_event_ids_list = list(attended_event_ids)
+    
+    # Get events where student attended but hasn't given feedback
+    feedback_given = db.session.query(Feedback.event_id).filter(
+        Feedback.student_id == student_id
+    ).all()
+    feedback_event_ids = {f[0] for f in feedback_given}
+    
+    events_needing_feedback = []
+    for event_id in attended_event_ids_list:
+        if event_id not in feedback_event_ids:
+            event = Event.query.get(event_id)
+            if event:
+                # Only show feedback prompt for events that ended (not ongoing)
+                try:
+                    event_end = datetime.combine(event.date, event.end_time)
+                    if now > event_end:
+                        events_needing_feedback.append(event)
+                except:
+                    pass
+    
+    for event in events_needing_feedback[:3]:  # Limit to 3 feedback prompts
+        notifications.append({
+            'type': 'feedback',
+            'icon': 'ph-chat-teardrop-text',
+            'message': f'📝 How was "{event.title}"? Share your feedback!',
+            'link': url_for('student.submit_feedback', event_id=event.event_id),
+            'time': datetime.combine(event.date, event.end_time) if event.date else now
+        })
+    
+    # 3. Pending team invitations
+    pending_invitations = TeamInvitation.query.filter_by(
+        invitee_id=student_id,
+        status='pending'
+    ).order_by(TeamInvitation.created_at.desc()).limit(3).all()
+    
+    for inv in pending_invitations:
+        team = Team.query.get(inv.team_id)
+        if team:
+            event = Event.query.get(team.event_id)
+            if event:
+                notifications.append({
+                    'type': 'invitation',
+                    'icon': 'ph-user-plus',
+                    'message': f'👋 You\'ve been invited to join team "{team.team_name}" for "{event.title}"!',
+                    'link': url_for('student.team_invitations'),
+                    'time': inv.created_at
+                })
+    
+    # 4. Upcoming registered events (reminder)
+    for reg in registrations:
+        event = Event.query.get(reg.event_id)
+        if event and event.date:
+            days_until = (event.date - today).days
+            if 0 <= days_until <= 2:  # Event is today, tomorrow, or day after
+                if days_until == 0:
+                    time_msg = "today"
+                elif days_until == 1:
+                    time_msg = "tomorrow"
+                else:
+                    time_msg = f"in {days_until} days"
+                
+                notifications.append({
+                    'type': 'reminder',
+                    'icon': 'ph-calendar-check',
+                    'message': f'📅 Reminder: "{event.title}" is {time_msg} at {event.start_time.strftime("%H:%M")}!',
+                    'link': url_for('student.my_registrations'),
+                    'time': datetime.combine(event.date, event.start_time)
+                })
+    
+    # Sort notifications by time (most recent/urgent first) and limit
+    notifications.sort(key=lambda x: x.get('time') or now, reverse=True)
+    notifications = notifications[:5]
 
     return render_template('student/dashboard.html', 
                          upcoming_events=upcoming_events,
                          registered_event_ids=registered_event_ids,
                          past_events=past_events,
                          attended_event_ids=attended_event_ids,
-                         pending_invitations_count=pending_invitations_count)
+                         pending_invitations_count=pending_invitations_count,
+                         notifications=notifications)
 
 
 @bp.route('/events')
@@ -75,10 +181,13 @@ def events():
     mode_filter = request.args.get('mode', '')
     search_query = request.args.get('q', '').strip()
 
+    # For guests, hide campus-exclusive events
     query = Event.query.filter(
         Event.status == 'approved',
         Event.date >= today
     )
+    if session.get('role_name', '').lower() == 'guest' or session.get('is_guest'):
+        query = query.filter(Event.is_campus_exclusive == False)
 
     if organizer_filter:
         query = query.filter_by(organizer_id=int(organizer_filter))
@@ -321,9 +430,11 @@ def invite_member(team_id):
         flash(f'User "{username}" not found', 'error')
         return redirect(url_for('student.manage_team', team_id=team_id))
     
-    # Check if invitee is a student
-    if invitee.role.role_name.lower() != 'student':
-        flash('You can only invite students', 'error')
+    # Allow inviting students and guests (role-based) or legacy guest flag
+    role_lower = (invitee.role.role_name or '').strip().lower() if invitee.role else ''
+    is_guest_invitee = role_lower == 'guest' or bool(getattr(invitee, 'is_guest', False))
+    if not (role_lower == 'student' or is_guest_invitee):
+        flash('You can only invite students or guest users by username', 'error')
         return redirect(url_for('student.manage_team', team_id=team_id))
     
     # Can't invite yourself
@@ -529,6 +640,19 @@ def my_certificates():
                         cert.prize_text = f"{team.prize_position} - {team.prize_title}"
                     else:
                         cert.prize_text = f"{team.prize_position} Place"
+        else:
+            # Check for individual prize (non-team event)
+            registration = Registration.query.filter_by(
+                event_id=cert.event_id,
+                student_id=student_id
+            ).first()
+            
+            if registration and registration.prize_position:
+                if registration.prize_position != 'Participant':
+                    if registration.prize_title:
+                        cert.prize_text = f"{registration.prize_position} - {registration.prize_title}"
+                    else:
+                        cert.prize_text = f"{registration.prize_position} Place"
     
     return render_template('student/certificates.html', 
                            certificates=certificates,

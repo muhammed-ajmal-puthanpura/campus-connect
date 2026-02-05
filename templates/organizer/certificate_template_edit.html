@@ -7,6 +7,15 @@
         <p class="text-muted">Drag each label to set positions. Save to apply for future certificates.</p>
     </div>
 
+    <style>
+        @media (min-width: 768px) {
+            .mobile-only { display: none !important; }
+        }
+    </style>
+    <div class="alert alert-info mobile-only text-center" role="alert" style="margin-top:0.5rem; font-size:0.95rem;">
+        Tip: for the best interactive editing, open this page in the Desktop site using your browser's "Request Desktop Site" option.
+    </div>
+
     <div class="template-editor">
         <div class="template-canvas" id="templateCanvas">
             <img src="{{ url_for('static', filename=template.image_url) }}" alt="{{ template.name }}" id="templateImage" draggable="false">

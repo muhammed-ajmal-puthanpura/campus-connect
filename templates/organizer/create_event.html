@@ -50,6 +50,17 @@
             </div>
         </div>
         
+        <!-- Prize Event Section -->
+        <div class="form-group" style="background: var(--bg-light); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-bottom: 0;">
+                <input type="checkbox" name="has_prizes" id="has_prizes" value="1" style="width: auto;">
+                <span><i class="ph ph-trophy"></i> This event has prizes (e.g., Competition, Contest with winners)</span>
+            </label>
+            <p class="text-muted" style="font-size: 0.85rem; margin-top: 0.5rem; margin-bottom: 0;">
+                <i class="ph ph-info"></i> Enable this to assign prizes to participants or teams after the event.
+            </p>
+        </div>
+        
         <div class="form-row">
             <div class="form-group">
                 <label>Mode</label>
@@ -94,6 +105,13 @@
             <div class="form-group" id="meeting-url" style="display:none;">
                 <label>Meeting URL</label>
                 <input type="url" name="meeting_url" class="form-control" placeholder="https://zoom.us/...">
+            </div>
+            <div class="form-group">
+                <label>Audience</label>
+                <select name="audience" class="form-control">
+                    <option value="public">Public (visible to everyone)</option>
+                    <option value="campus">Campus exclusive (students only)</option>
+                </select>
             </div>
         </div>
         <button type="submit" class="btn btn-primary">Create Event</button>

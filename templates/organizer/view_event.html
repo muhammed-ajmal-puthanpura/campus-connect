@@ -225,7 +225,7 @@
         {% if past_event_ids and event.event_id in past_event_ids %}
         <a href="{{ url_for('organizer.event_feedback', event_id=event.event_id) }}" class="btn btn-secondary"><i class="ph ph-star"></i> Reviews</a>
         {% endif %}
-        <form method="POST" action="{{ url_for('organizer.delete_event', event_id=event.event_id) }}" onsubmit="return confirmAction('Delete this event?')">
+        <form method="POST" action="{{ url_for('organizer.delete_event', event_id=event.event_id) }}" onsubmit="return confirmAction(this, 'Delete this event?')">
             <button type="submit" class="btn btn-danger"><i class="ph ph-trash"></i> Delete</button>
         </form>
     </div>
@@ -245,6 +245,9 @@
         {% if event.is_team_event %}
         <p><strong>Event Type:</strong> <span class="badge" style="background: #7c3aed; color: white;"><i class="ph ph-users-three"></i> Team Event</span></p>
         <p><strong>Team Size:</strong> {{ event.min_team_size }} - {{ event.max_team_size }} members</p>
+        {% endif %}
+        {% if event.has_prizes %}
+        <p><strong>Prizes:</strong> <span class="badge" style="background: #f59e0b; color: white;"><i class="ph ph-trophy"></i> This event has prizes</span></p>
         {% endif %}
     </div>
     
@@ -302,18 +305,27 @@
     </div>
     
     <!-- Prize Assignment Section -->
+    {% set teams_with_min_attendance = [] %}
+    {% for team in teams %}
+        {% set attended_count = team.members|selectattr('attendance')|list|length %}
+        {% if attended_count >= event.min_team_size %}
+            {% set _ = teams_with_min_attendance.append(team) %}
+        {% endif %}
+    {% endfor %}
+    
     <div class="prize-section" style="margin-bottom: 2rem; background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
         <h2 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
             <i class="ph ph-trophy" style="color: #f59e0b;"></i> Assign Prizes
         </h2>
         
+        {% if teams_with_min_attendance %}
         <form method="POST" action="{{ url_for('organizer.assign_prize', event_id=event.event_id) }}" class="prize-form">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                 <div class="form-group">
                     <label for="team_id"><i class="ph ph-users-three"></i> Select Team</label>
                     <select name="team_id" id="team_id" class="form-control" required>
                         <option value="">-- Choose Team --</option>
-                        {% for team in teams %}
+                        {% for team in teams_with_min_attendance %}
                         <option value="{{ team.team_id }}">{{ team.team_name }}{% if team.prize_position %} ({{ team.prize_position }}){% endif %}</option>
                         {% endfor %}
                     </select>
@@ -356,8 +368,13 @@
                     <i class="ph ph-x"></i> Clear Prize
                 </button>
             </div>
-            <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-medium);"><i class="ph ph-info"></i> Assigning a prize will automatically update certificates for team members who have attendance.</p>
+            <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-medium);"><i class="ph ph-info"></i> Only teams with at least {{ event.min_team_size }} members attended can receive prizes. Certificates will be updated automatically.</p>
         </form>
+        {% else %}
+        <p style="color: var(--text-medium); padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+            <i class="ph ph-info"></i> No eligible teams yet. Prizes can only be assigned to teams where at least {{ event.min_team_size }} members have attended the event.
+        </p>
+        {% endif %}
         
         <!-- Prize Summary -->
         {% set prize_teams = teams|selectattr('prize_position')|list %}
@@ -378,13 +395,19 @@
     </div>
     
     <script>
-    function clearPrize() {
+    async function clearPrize() {
         const teamId = document.getElementById('team_id').value;
         if (!teamId) {
-            alert('Please select a team first');
+            if (window.customAlert) { await window.customAlert('Please select a team first'); } else { alert('Please select a team first'); }
             return;
         }
-        if (confirm('Remove prize from selected team? This will update their certificates to participation certificates.')) {
+        var confirmed = true;
+        if (window.customConfirm) {
+            confirmed = await window.customConfirm('Remove prize from selected team? This will update their certificates to participation certificates.');
+        } else {
+            confirmed = confirm('Remove prize from selected team? This will update their certificates to participation certificates.');
+        }
+        if (confirmed) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '{{ url_for("organizer.clear_prize", event_id=event.event_id) }}';
@@ -392,6 +415,119 @@
             input.type = 'hidden';
             input.name = 'team_id';
             input.value = teamId;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    </script>
+    {% endif %}
+    
+    <!-- Individual Prize Assignment Section (for non-team events with prizes) -->
+    {% if not event.is_team_event and event.has_prizes %}
+    {% set attended_registrations = registrations|selectattr('attendance')|list %}
+    <div class="prize-section" style="margin-bottom: 2rem; background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <h2 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="ph ph-trophy" style="color: #f59e0b;"></i> Assign Prizes to Participants
+        </h2>
+        
+        {% if attended_registrations %}
+        <form method="POST" action="{{ url_for('organizer.assign_individual_prize', event_id=event.event_id) }}" class="prize-form">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label for="registration_id"><i class="ph ph-user"></i> Select Participant</label>
+                    <select name="registration_id" id="registration_id" class="form-control" required>
+                        <option value="">-- Choose Participant --</option>
+                        {% for reg in attended_registrations %}
+                        <option value="{{ reg.registration_id }}">{{ reg.student.full_name }}{% if reg.prize_position %} ({{ reg.prize_position }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ind_prize_position"><i class="ph ph-medal"></i> Prize Position</label>
+                    <select name="prize_position" id="ind_prize_position" class="form-control" required>
+                        <option value="">-- Select Position --</option>
+                        <option value="1st">🥇 1st Place</option>
+                        <option value="2nd">🥈 2nd Place</option>
+                        <option value="3rd">🥉 3rd Place</option>
+                        <option value="Special">⭐ Special Prize</option>
+                        <option value="Honorable">🎖️ Honorable Mention</option>
+                        <option value="Participant">📜 Participant (No Prize)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ind_prize_title"><i class="ph ph-text-t"></i> Prize Title (Optional)</label>
+                    <input type="text" name="prize_title" id="ind_prize_title" class="form-control" placeholder="e.g., Winner, Best Performance">
+                </div>
+                
+                <div class="form-group">
+                    <label for="ind_certificate_template_id"><i class="ph ph-certificate"></i> Certificate Template</label>
+                    <select name="certificate_template_id" id="ind_certificate_template_id" class="form-control">
+                        <option value="">-- Default Template --</option>
+                        {% for template in certificate_templates %}
+                        <option value="{{ template.template_id }}">{{ template.name }}{% if template.is_default %} (Default){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="ph ph-trophy"></i> Assign Prize
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearIndividualPrize()" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <i class="ph ph-x"></i> Clear Prize
+                </button>
+            </div>
+            <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-medium);"><i class="ph ph-info"></i> Only participants with attendance can be assigned prizes. Certificate will be automatically updated.</p>
+        </form>
+        {% else %}
+        <p style="color: var(--text-medium); padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+            <i class="ph ph-info"></i> No participants with attendance yet. Prizes can only be assigned to participants who have attended the event.
+        </p>
+        {% endif %}
+        
+        <!-- Prize Summary for Individual Events -->
+        {% set prize_participants = registrations|selectattr('prize_position')|list %}
+        {% if prize_participants %}
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <h4 style="margin-bottom: 0.75rem; color: var(--text-medium);"><i class="ph ph-list-checks"></i> Prize Summary</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                {% for reg in prize_participants %}
+                <div style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 20px; font-size: 0.85rem;">
+                    <i class="ph-fill ph-trophy" style="color: #d97706;"></i>
+                    <span style="font-weight: 600; color: #92400e;">{{ reg.prize_position }}</span>
+                    <span style="color: #78350f;">{{ reg.student.full_name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <script>
+    async function clearIndividualPrize() {
+        const regId = document.getElementById('registration_id').value;
+        if (!regId) {
+            if (window.customAlert) { await window.customAlert('Please select a participant first'); } else { alert('Please select a participant first'); }
+            return;
+        }
+        var confirmed = true;
+        if (window.customConfirm) {
+            confirmed = await window.customConfirm('Remove prize from selected participant? This will update their certificate to a participation certificate.');
+        } else {
+            confirmed = confirm('Remove prize from selected participant? This will update their certificate to a participation certificate.');
+        }
+        if (confirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("organizer.clear_individual_prize", event_id=event.event_id) }}';
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'registration_id';
+            input.value = regId;
             form.appendChild(input);
             document.body.appendChild(form);
             form.submit();
@@ -431,18 +567,54 @@
     {% endif %}
     
     <!-- Mobile: Card Layout for Registrations -->
+    <style>
+    /* Mobile card list - hidden on desktop */
+    .registrations-cards { display: none; flex-direction: column; gap: 0.75rem; }
+    .reg-card { display:flex; align-items:center; gap:0.75rem; background:var(--card-bg); padding:0.85rem; border-radius:10px; border:1px solid var(--border-color); }
+    .reg-card-icon { display:flex; align-items:center; gap:0.5rem; }
+    .reg-avatar { width:44px; height:44px; aspect-ratio: 1 / 1; flex: 0 0 44px; box-sizing: border-box; border-radius:50%; overflow:hidden; background:linear-gradient(135deg,#eef2ff,#f8fafc); display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:var(--primary-color); }
+    .reg-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+    .reg-attendance-icon { font-size:0.95rem; color:var(--text-medium); }
+    .reg-card-info { flex:1; min-width:0; }
+    .reg-card-name { font-weight:600; color:var(--text-dark); }
+    .reg-card-email { font-size:0.9rem; color:var(--text-medium); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .reg-card-status { font-weight:600; font-size:0.9rem; color:var(--text-medium); }
+
+    /* Default: show table (desktop), hide mobile cards. On small screens, reverse. */
+    .registrations-table { display: block; }
+    @media (max-width: 768px) {
+        .registrations-table { display: none !important; }
+        .registrations-cards { display: flex !important; }
+    }
+    </style>
     <div class="registrations-cards">
         {% for reg in registrations %}
         <div class="reg-card {{ 'attended' if reg.attendance else 'not-attended' }}">
             <div class="reg-card-icon">
-                {% if reg.attendance %}
-                <i class="ph-fill ph-check-circle"></i>
-                {% else %}
-                <i class="ph-fill ph-x-circle"></i>
-                {% endif %}
+                <div class="reg-avatar">
+                    {% if reg.student.profile_image %}
+                        <img src="{{ url_for('static', filename=reg.student.profile_image) }}" alt="{{ reg.student.full_name }}">
+                    {% else %}
+                        <i class="ph ph-user-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="reg-attendance-icon">
+                    {% if reg.attendance %}
+                        <i class="ph-fill ph-check-circle" style="color: #16a34a"></i>
+                    {% else %}
+                        <i class="ph-fill ph-x-circle" style="color: #dc2626"></i>
+                    {% endif %}
+                </div>
             </div>
             <div class="reg-card-info">
-                <div class="reg-card-name">{{ reg.student.full_name }}</div>
+                <div class="reg-card-name">
+                    {{ reg.student.full_name }}
+                    {% if reg.prize_position and reg.prize_position != 'Participant' %}
+                    <span style="display: inline-flex; align-items: center; gap: 0.2rem; margin-left: 0.3rem; padding: 0.15rem 0.4rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 4px; font-size: 0.7rem; font-weight: 600; color: #92400e;">
+                        <i class="ph-fill ph-trophy" style="font-size: 0.7rem;"></i> {{ reg.prize_position }}
+                    </span>
+                    {% endif %}
+                </div>
                 <div class="reg-card-email">{{ reg.student.email }}</div>
                 {% if not reg.attendance %}
                 <div class="reg-card-action">
@@ -460,13 +632,24 @@
     <!-- Desktop: Table Layout for Registrations -->
     <div class="registrations-table">
     <table class="table">
-        <thead><tr><th>Student</th><th>Email</th><th>Registered At</th><th>Attendance</th></tr></thead>
+        <thead><tr><th>Student</th><th>Email</th><th>Registered At</th><th>{% if event.has_prizes and not event.is_team_event %}Prize{% endif %}</th><th>Attendance</th></tr></thead>
         <tbody>
             {% for reg in registrations %}
             <tr class="{{ 'row-attended' if reg.attendance else 'row-not-attended' }}">
                 <td>{{ reg.student.full_name }}</td>
                 <td>{{ reg.student.email }}</td>
                 <td>{{ reg.registered_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if event.has_prizes and not event.is_team_event %}
+                        {% if reg.prize_position and reg.prize_position != 'Participant' %}
+                        <span style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #92400e;">
+                            <i class="ph-fill ph-trophy" style="color: #d97706;"></i> {{ reg.prize_position }}{% if reg.prize_title %} - {{ reg.prize_title }}{% endif %}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--text-medium); font-size: 0.85rem;">—</span>
+                        {% endif %}
+                    {% endif %}
+                </td>
                 <td>
                     {% if reg.attendance %}
                         <span class="attendance-icon attended">

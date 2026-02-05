@@ -125,6 +125,7 @@ Jane Smith,22EC002,jane.smith@campus.edu,Electronics,Student@123</pre>
             <tr>
                 <th>Name</th>
                 <th>Username</th>
+                <th>Mobile</th>
                 <th>Email</th>
                 <th>Role</th>
                 <th>Department</th>
@@ -137,10 +138,20 @@ Jane Smith,22EC002,jane.smith@campus.edu,Electronics,Student@123</pre>
             <tr>
                 <td>{{ user.full_name }}</td>
                 <td>{{ user.username or '—' }}</td>
-                <td>{{ user.email }}</td>
+                <td>{{ user.mobile_number or '—' }}</td>
+                <td>{{ user.email or '—' }}</td>
                 <td>
-                    {% set role_name = user.role.role_name if user.role else 'Unknown' %}
-                    {% set role_lower = role_name|lower %}
+                    {% if user.role and (user.role.role_name or '')|lower == 'guest' %}
+                        {% set role_name = 'Guest' %}
+                        {% set role_lower = 'guest' %}
+                    {% elif user.is_guest %}
+                        {# Legacy fallback if role not set but is_guest flagged in DB #}
+                        {% set role_name = 'Guest' %}
+                        {% set role_lower = 'guest' %}
+                    {% else %}
+                        {% set role_name = user.role.role_name if user.role else 'Unknown' %}
+                        {% set role_lower = role_name|lower %}
+                    {% endif %}
                     {% if role_lower == 'admin' %}
                         {% set badge_class = 'badge-danger' %}
                     {% elif role_lower == 'principal' %}
@@ -160,8 +171,9 @@ Jane Smith,22EC002,jane.smith@campus.edu,Electronics,Student@123</pre>
                 <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}</td>
                 <td>
                     <a href="{{ url_for('admin.edit_user', user_id=user.user_id) }}" class="btn btn-sm btn-secondary">Edit</a>
+                    {# Per-user guest toggle removed by request. Use global guest settings in Admin Dashboard. #}
                     {% if role_lower != 'admin' %}
-                        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.user_id) }}" onsubmit="return confirmAction('Delete this user?')" style="display:inline-block;">
+                        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.user_id) }}" onsubmit="return confirmAction(this, 'Delete this user?')" style="display:inline-block; margin-left:6px;">
                             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                         </form>
                     {% else %}

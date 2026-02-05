@@ -35,6 +35,22 @@ function validateForm(formId) {
 
 // Confirm before delete/reject actions
 function confirmAction(message) {
+    // Backwards-compatible helper. If called as confirmAction(formElement, message)
+    // it will show a customConfirm (if available) and submit the form asynchronously.
+    if (message && typeof message === 'string' && message.trim() === '') message = undefined;
+    if (arguments.length > 1 && typeof arguments[0] === 'object' && arguments[0].tagName) {
+        var form = arguments[0];
+        var msg = arguments[1] || 'Are you sure you want to perform this action?';
+        if (window.customConfirm) {
+            window.customConfirm(msg).then(function(yes) {
+                if (yes) form.submit();
+            });
+            return false; // prevent default submit; we'll submit if confirmed
+        }
+        return confirm(msg);
+    }
+
+    // Fallback: if customConfirm not available, use native confirm synchronously
     return confirm(message || 'Are you sure you want to perform this action?');
 }
 
@@ -48,7 +64,7 @@ function validateEventDate() {
             today.setHours(0, 0, 0, 0);
             
             if (selectedDate < today) {
-                alert('Event date cannot be in the past');
+                if (window.customAlert) { window.customAlert('Event date cannot be in the past'); } else { alert('Event date cannot be in the past'); }
                 this.value = '';
             }
         });
@@ -64,7 +80,7 @@ function validateEventTime() {
         endTime.addEventListener('change', function() {
             if (startTime.value && endTime.value) {
                 if (endTime.value <= startTime.value) {
-                    alert('End time must be after start time');
+                    if (window.customAlert) { window.customAlert('End time must be after start time'); } else { alert('End time must be after start time'); }
                     this.value = '';
                 }
             }
@@ -94,7 +110,7 @@ function printCertificate() {
 // Copy to clipboard
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        alert('Copied to clipboard!');
+        if (window.customAlert) { window.customAlert('Copied to clipboard!'); } else { alert('Copied to clipboard!'); }
     }).catch(err => {
         console.error('Failed to copy:', err);
     });

@@ -9,6 +9,14 @@
         <div class="stat-card"><h3>{{ total_students }}</h3><p>Students</p></div>
         <div class="stat-card"><h3>{{ total_registrations }}</h3><p>Registrations</p></div>
     </div>
+    <div style="margin-top:12px;">
+        <form method="POST" action="{{ url_for('admin.toggle_guest_login') }}">
+            <button type="submit" class="btn {% if guest_enabled and guest_enabled.value == '1' %}btn-warning{% else %}btn-success{% endif %}">
+                {% if guest_enabled and guest_enabled.value == '1' %}Disable Guest Login{% else %}Enable Guest Login{% endif %}
+            </button>
+            <span class="text-muted" style="margin-left:8px;">Current: {% if guest_enabled and guest_enabled.value == '1' %}<strong>Enabled</strong>{% else %}<strong>Disabled</strong>{% endif %}</span>
+        </form>
+    </div>
     <h2>Recent Events</h2>
     <table class="table">
         <thead><tr><th>Title</th><th>Date</th><th>Status</th><th>Department</th></tr></thead>

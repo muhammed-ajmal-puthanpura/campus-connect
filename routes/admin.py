@@ -3,11 +3,11 @@ Admin Routes - Analytics, Reports, System Overview
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
-from models.models import Event, Registration, Attendance, Feedback, User, Department, Venue, Role
+from models.models import Event, Registration, Attendance, Feedback, User, Department, Venue, Role, AppConfig
 from models import db
 from datetime import datetime, date, timedelta
 from functools import wraps
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from io import BytesIO
 import io
 import csv
@@ -57,6 +57,7 @@ def dashboard():
         Event.date >= date.today()
     ).order_by(Event.date).limit(5).all()
     
+    guest_enabled = AppConfig.query.get('guest_enabled')
     return render_template('admin/dashboard.html',
                          total_events=total_events,
                          approved_events=approved_events,
@@ -66,7 +67,8 @@ def dashboard():
                          total_attendance=total_attendance,
                          recent_events=recent_events,
                          dept_stats=dept_stats,
-                         upcoming_events=upcoming_events)
+                         upcoming_events=upcoming_events,
+                         guest_enabled=guest_enabled)
 
 
 @bp.route('/events')
@@ -716,24 +718,50 @@ def delete_user(user_id):
         flash('Admin accounts cannot be deleted.', 'error')
         return redirect(url_for('admin.users'))
 
-    # Safety checks for related data
-    has_links = any([
-        user.organized_events,
-        user.approvals,
-        user.registrations,
-        user.scanned_attendance,
-        user.certificates,
-        user.feedback
-    ])
-
-    if has_links:
-        flash('Cannot delete user with related records (events, approvals, registrations, attendance, certificates, or feedback).', 'warning')
+    # Prevent deleting other admin accounts
+    if user.role and user.role.role_name and user.role.role_name.lower() == 'admin':
+        flash('Admin accounts cannot be deleted.', 'error')
         return redirect(url_for('admin.users'))
 
-    db.session.delete(user)
-    db.session.commit()
-    flash('User deleted successfully.', 'success')
-    return redirect(url_for('admin.users'))
+    # Conservative cleanup of related records to allow deletion
+    try:
+        # Delete attendance scanned by user
+        db.session.execute(text('DELETE FROM attendance WHERE scanned_by = :uid'), {'uid': user_id})
+
+        # Delete team invitations where invitee is this user
+        db.session.execute(text('DELETE FROM team_invitations WHERE invitee_id = :uid'), {'uid': user_id})
+
+        # Delete registrations for this user
+        db.session.execute(text('DELETE FROM registrations WHERE student_id = :uid'), {'uid': user_id})
+
+        # Delete teams led by this user
+        db.session.execute(text('DELETE FROM teams WHERE leader_id = :uid'), {'uid': user_id})
+
+        # Delete certificates issued to this user
+        db.session.execute(text('DELETE FROM certificates WHERE student_id = :uid'), {'uid': user_id})
+
+        # Delete feedback by this user
+        db.session.execute(text('DELETE FROM feedback WHERE student_id = :uid'), {'uid': user_id})
+
+        # Delete approvals by this user
+        db.session.execute(text('DELETE FROM approvals WHERE approver_id = :uid'), {'uid': user_id})
+
+        # Delete events organized by this user (this will cascade to registrations/teams if DB is configured)
+        db.session.execute(text('DELETE FROM events WHERE organizer_id = :uid'), {'uid': user_id})
+
+        # Finally delete the user
+        db.session.delete(user)
+        db.session.commit()
+        flash('User deleted successfully.', 'success')
+        return redirect(url_for('admin.users'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to delete user %s', user_id)
+        flash(f'Failed to delete user: {e}', 'error')
+        return redirect(url_for('admin.users'))
+
+
+
 
 
 def _normalize_headers(headers):
@@ -749,6 +777,23 @@ def _resolve_department(dept_id, dept_name, dept_map):
     if dept_name:
         return dept_map.get(str(dept_name).strip().lower())
     return None
+
+
+@bp.route('/toggle-guest-login', methods=['POST'])
+@admin_required
+def toggle_guest_login():
+    """Toggle the global guest login feature on/off via `app_config.guest_enabled`."""
+    cfg = AppConfig.query.get('guest_enabled')
+    if not cfg:
+        cfg = AppConfig(key='guest_enabled', value='1')
+        db.session.add(cfg)
+
+    current = (cfg.value or '').strip()
+    cfg.value = '0' if current == '1' else '1'
+    db.session.commit()
+    flash(f"Guest login {'enabled' if cfg.value == '1' else 'disabled'}.", 'success')
+    # Return admin to the dashboard where the toggle was available
+    return redirect(url_for('admin.dashboard'))
 
 
 @bp.route('/users/bulk-upload', methods=['POST'])
@@ -929,3 +974,90 @@ def bulk_template():
         download_name=filename,
         mimetype='text/csv'
     )
+
+# --- Guest management added by feature: time-limited guest accounts ---
+from models.models import AppConfig
+
+@bp.route('/guests')
+@admin_required
+def guests():
+    """Guest management dashboard"""
+    guest_enabled = AppConfig.query.get('guest_enabled')
+    guest_validity = AppConfig.query.get('guest_validity_days')
+    cleanup_policy = AppConfig.query.get('guest_cleanup_policy')
+
+    # Prefer role-based guest detection; join roles to find users with Guest role
+    guests = User.query.join(Role).filter(Role.role_name.ilike('guest')).order_by(User.created_at.desc()).all()
+    return render_template('admin/guests.html', guests=guests, guest_enabled=guest_enabled, guest_validity=guest_validity, cleanup_policy=cleanup_policy)
+
+@bp.route('/guests/update_settings', methods=['POST'])
+@admin_required
+def guests_update_settings():
+    enabled = request.form.get('guest_enabled') or '0'
+    validity = request.form.get('guest_validity_days') or '30'
+    policy = request.form.get('guest_cleanup_policy') or 'archive'
+    def setk(k,v):
+        s = AppConfig.query.get(k)
+        if not s:
+            s = AppConfig(key=k, value=v)
+            db.session.add(s)
+        else:
+            s.value = v
+    setk('guest_enabled', '1' if enabled=='1' else '0')
+    setk('guest_validity_days', str(int(validity)))
+    setk('guest_cleanup_policy', policy)
+    db.session.commit()
+    flash('Guest settings updated', 'success')
+    return redirect(url_for('admin.guests'))
+
+@bp.route('/guests/deactivate/<int:user_id>', methods=['POST'])
+@admin_required
+def guests_deactivate(user_id):
+    user = User.query.get_or_404(user_id)
+    is_guest_user = (user.role and (user.role.role_name or '').strip().lower() == 'guest') or bool(getattr(user, 'is_guest', False))
+    if not is_guest_user:
+        flash('Not a guest user', 'error')
+        return redirect(url_for('admin.guests'))
+    user.guest_status = 'disabled'
+    db.session.commit()
+    flash('Guest deactivated', 'success')
+    return redirect(url_for('admin.guests'))
+
+@bp.route('/guests/delete/<int:user_id>', methods=['POST'])
+@admin_required
+def guests_delete(user_id):
+    user = User.query.get_or_404(user_id)
+    is_guest_user = (user.role and (user.role.role_name or '').strip().lower() == 'guest') or bool(getattr(user, 'is_guest', False))
+    if not is_guest_user:
+        flash('Not a guest user', 'error')
+        return redirect(url_for('admin.guests'))
+    # Delete related data: registrations, attendance, certificates, feedback
+    Registration.query.filter_by(student_id=user.user_id).delete()
+    Attendance.query.filter(Attendance.scanned_by==user.user_id).delete()
+    Certificate.query.filter_by(student_id=user.user_id).delete()
+    Feedback.query.filter_by(student_id=user.user_id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    flash('Guest and related data deleted', 'success')
+    return redirect(url_for('admin.guests'))
+
+@bp.route('/guests/cleanup', methods=['POST'])
+@admin_required
+def guests_cleanup():
+    # Run cleanup: deactivate expired guests and delete/ archive based on policy
+    from datetime import datetime
+    now = datetime.utcnow()
+    # Find expired users by Guest role (preferred) or legacy flag
+    expired = User.query.join(Role).filter(Role.role_name.ilike('guest'), User.expiry_date!=None, User.expiry_date<now).all()
+    policy = (AppConfig.query.get('guest_cleanup_policy').value if AppConfig.query.get('guest_cleanup_policy') else 'archive')
+    for u in expired:
+        u.guest_status = 'expired'
+        if policy == 'delete':
+            Registration.query.filter_by(student_id=u.user_id).delete()
+            Attendance.query.filter(Attendance.scanned_by==u.user_id).delete()
+            Certificate.query.filter_by(student_id=u.user_id).delete()
+            Feedback.query.filter_by(student_id=u.user_id).delete()
+            db.session.delete(u)
+    db.session.commit()
+    flash('Guest cleanup completed', 'success')
+    return redirect(url_for('admin.guests'))

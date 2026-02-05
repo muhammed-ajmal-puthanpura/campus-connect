@@ -44,11 +44,18 @@ class User(db.Model):
     user_id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(100), nullable=False)
     username = db.Column(db.String(50), nullable=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
     password = db.Column(db.String(255), nullable=False)
     role_id = db.Column(db.Integer, db.ForeignKey('roles.role_id'), nullable=False)
     dept_id = db.Column(db.Integer, db.ForeignKey('departments.dept_id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Guest account fields
+    is_guest = db.Column(db.Boolean, default=False)
+    mobile_number = db.Column(db.String(20), unique=True, nullable=True)
+    expiry_date = db.Column(db.DateTime, nullable=True)
+    guest_status = db.Column(db.String(20), default='active')  # active, expired, disabled
+    
+
     
     # Relationships
     organized_events = db.relationship('Event', foreign_keys='Event.organizer_id', backref='organizer', lazy=True)
@@ -67,7 +74,7 @@ class User(db.Model):
         return check_password_hash(self.password, password)
     
     def __repr__(self):
-        return f'<User {self.email}>'
+        return f'<User {self.email or self.mobile_number}>'
 
 
 class Venue(db.Model):
@@ -112,11 +119,22 @@ class Event(db.Model):
     organizer_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Guest account fields
+    is_guest = db.Column(db.Boolean, default=False)
+    mobile_number = db.Column(db.String(20), unique=True, nullable=True)
+    expiry_date = db.Column(db.DateTime, nullable=True)
+    guest_status = db.Column(db.String(20), default='active')  # active, expired, disabled
+
     
     # Team event fields
     is_team_event = db.Column(db.Boolean, default=False)
     min_team_size = db.Column(db.Integer, default=1)
     max_team_size = db.Column(db.Integer, default=1)
+    # Audience: if True the event is campus-exclusive (students only); otherwise public
+    is_campus_exclusive = db.Column(db.Boolean, default=False)
+    
+    # Prize event field (for events with prizes - applies to both team and individual events)
+    has_prizes = db.Column(db.Boolean, default=False)
     
     # Relationships
     approvals = db.relationship('Approval', backref='event', lazy=True, cascade='all, delete-orphan')
@@ -157,8 +175,14 @@ class Registration(db.Model):
     registered_at = db.Column(db.DateTime, default=datetime.utcnow)
     team_id = db.Column(db.Integer, db.ForeignKey('teams.team_id'), nullable=True)
     
+    # Individual prize fields (for non-team events with prizes)
+    prize_position = db.Column(db.String(50), nullable=True)  # '1st', '2nd', '3rd', 'Special', etc.
+    prize_title = db.Column(db.String(100), nullable=True)  # 'Winner', 'Runner Up', 'Best Performance', etc.
+    prize_certificate_template_id = db.Column(db.Integer, db.ForeignKey('certificate_templates.template_id'), nullable=True)
+    
     # Relationships
     attendance = db.relationship('Attendance', backref='registration', uselist=False, cascade='all, delete-orphan')
+    prize_certificate_template = db.relationship('CertificateTemplate', foreign_keys=[prize_certificate_template_id])
     
     def __repr__(self):
         return f'<Registration {self.registration_id}>'
@@ -173,6 +197,12 @@ class Team(db.Model):
     team_name = db.Column(db.String(100), nullable=False)
     leader_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Guest account fields
+    is_guest = db.Column(db.Boolean, default=False)
+    mobile_number = db.Column(db.String(20), unique=True, nullable=True)
+    expiry_date = db.Column(db.DateTime, nullable=True)
+    guest_status = db.Column(db.String(20), default='active')  # active, expired, disabled
+
     
     # Prize fields
     prize_position = db.Column(db.String(50), nullable=True)  # '1st', '2nd', '3rd', 'Special', etc.
@@ -198,6 +228,12 @@ class TeamInvitation(db.Model):
     invitee_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Guest account fields
+    is_guest = db.Column(db.Boolean, default=False)
+    mobile_number = db.Column(db.String(20), unique=True, nullable=True)
+    expiry_date = db.Column(db.DateTime, nullable=True)
+    guest_status = db.Column(db.String(20), default='active')  # active, expired, disabled
+
     responded_at = db.Column(db.DateTime, nullable=True)
     
     # Relationships
@@ -246,6 +282,12 @@ class CertificateTemplate(db.Model):
     is_default = db.Column(db.Boolean, default=False)
     positions = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Guest account fields
+    is_guest = db.Column(db.Boolean, default=False)
+    mobile_number = db.Column(db.String(20), unique=True, nullable=True)
+    expiry_date = db.Column(db.DateTime, nullable=True)
+    guest_status = db.Column(db.String(20), default='active')  # active, expired, disabled
+
 
     organizer = db.relationship('User', backref='certificate_templates', lazy=True)
 
@@ -266,3 +308,28 @@ class Feedback(db.Model):
     
     def __repr__(self):
         return f'<Feedback {self.feedback_id}>'
+
+
+class GuestOTP(db.Model):
+    """Temporary OTP storage for guest login"""
+    __tablename__ = 'guest_otps'
+
+    id = db.Column(db.Integer, primary_key=True)
+    mobile_number = db.Column(db.String(20), nullable=False, index=True)
+    code = db.Column(db.String(10), nullable=False)
+    used = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<GuestOTP {self.mobile_number} {self.code}>'
+
+
+class AppConfig(db.Model):
+    """Simple key/value storage for admin-configurable settings"""
+    __tablename__ = 'app_config'
+
+    key = db.Column(db.String(100), primary_key=True)
+    value = db.Column(db.String(255), nullable=True)
+
+    def __repr__(self):
+        return f'<AppConfig {self.key}={self.value}>'

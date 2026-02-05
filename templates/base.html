@@ -24,7 +24,7 @@
                     <i class="ph ph-user-circle"></i> {{ session.full_name }} ({{ session.role_name }})
                 </span>
                 
-                {% if (session.get('role_name') or '')|lower == 'student' %}
+                {% if (session.get('role_name') or '')|lower in ['student','guest'] or session.get('is_guest') %}
                     <a href="{{ url_for('student.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
                     <a href="{{ url_for('student.events') }}"><i class="ph ph-calendar-dots"></i> Events</a>
                     <a href="{{ url_for('student.my_registrations') }}"><i class="ph ph-ticket"></i> My Registrations</a>
@@ -81,7 +81,7 @@
     {% if session.get('user_id') %}
     <!-- Mobile Bottom Navigation -->
     <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-        {% if (session.get('role_name') or '')|lower == 'student' %}
+        {% if (session.get('role_name') or '')|lower in ['student','guest'] or session.get('is_guest') %}
             <a href="{{ url_for('student.dashboard') }}"><i class="ph ph-house"></i> Dashboard</a>
             <a href="{{ url_for('student.events') }}"><i class="ph ph-calendar-dots"></i> Events</a>
             <a href="{{ url_for('student.my_registrations') }}"><i class="ph ph-ticket"></i> Registrations</a>
@@ -109,6 +109,92 @@
     {% endif %}
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Custom modal (global) -->
+    <style>
+    .custom-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 99999; }
+    .custom-modal.show { display:flex; }
+    .custom-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
+    .custom-modal-dialog { position: relative; max-width: 520px; width: 90%; margin: 1rem; }
+    .custom-modal-content { background: var(--card-bg); border-radius: 10px; padding: 1rem; box-shadow: 0 8px 30px rgba(2,6,23,0.2); border: 1px solid var(--border-color); }
+    .custom-modal-header h3 { margin: 0 0 0.5rem 0; }
+    .custom-modal-body { color: var(--text-dark); margin-bottom: 0.75rem; }
+    .custom-modal-footer { display:flex; gap:0.5rem; justify-content:flex-end; }
+    .custom-modal .btn { min-width: 88px; }
+    </style>
+
+    <div id="custom-modal" class="custom-modal" role="dialog" aria-hidden="true">
+        <div class="custom-modal-backdrop" onclick="closeCustomModal()"></div>
+        <div class="custom-modal-dialog">
+            <div class="custom-modal-content">
+                <div class="custom-modal-header"><h3 id="custom-modal-title">Notice</h3></div>
+                <div class="custom-modal-body" id="custom-modal-body">Message</div>
+                <div class="custom-modal-footer">
+                    <button id="custom-modal-cancel" class="btn">Cancel</button>
+                    <button id="custom-modal-ok" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Lightweight promise-based custom dialog helpers
+    (function() {
+        var modal = document.getElementById('custom-modal');
+        var titleEl = document.getElementById('custom-modal-title');
+        var bodyEl = document.getElementById('custom-modal-body');
+        var okBtn = document.getElementById('custom-modal-ok');
+        var cancelBtn = document.getElementById('custom-modal-cancel');
+
+        function close() {
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        window.closeCustomModal = close;
+
+        window.customAlert = function(message, title) {
+            return new Promise(function(resolve) {
+                titleEl.textContent = title || 'Notice';
+                bodyEl.textContent = message || '';
+                cancelBtn.style.display = 'none';
+                okBtn.textContent = 'OK';
+                modal.classList.add('show');
+                modal.setAttribute('aria-hidden', 'false');
+                okBtn.focus();
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                }
+
+                function onOk() { cleanup(); close(); resolve(); }
+                okBtn.addEventListener('click', onOk);
+            });
+        };
+
+        window.customConfirm = function(message, title) {
+            return new Promise(function(resolve) {
+                titleEl.textContent = title || 'Confirm';
+                bodyEl.textContent = message || '';
+                cancelBtn.style.display = '';
+                okBtn.textContent = 'Yes';
+                modal.classList.add('show');
+                modal.setAttribute('aria-hidden', 'false');
+                okBtn.focus();
+
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                }
+
+                function onOk() { cleanup(); close(); resolve(true); }
+                function onCancel() { cleanup(); close(); resolve(false); }
+
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+            });
+        };
+    })();
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

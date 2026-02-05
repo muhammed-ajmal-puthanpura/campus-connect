@@ -40,12 +40,19 @@ def dashboard():
     """Organizer dashboard"""
     organizer_id = session['user_id']
     search = (request.args.get('q') or '').strip()
+    page = request.args.get('page', 1, type=int)
     
-    # Get organizer's events
+    # Detect mobile via User-Agent for different pagination limits
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(x in user_agent for x in ['mobile', 'android', 'iphone', 'ipad', 'ipod'])
+    per_page = 5 if is_mobile else 10
+    
+    # Get organizer's events with pagination
     events_query = Event.query.filter_by(organizer_id=organizer_id)
     if search:
         events_query = events_query.filter(Event.title.ilike(f"%{search}%"))
-    events = events_query.order_by(Event.created_at.desc()).all()
+    pagination = events_query.order_by(Event.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    events = pagination.items
     
     # Count statistics
     pending_count = Event.query.filter_by(organizer_id=organizer_id, status='pending').count()
@@ -62,13 +69,80 @@ def dashboard():
         except Exception:
             pass
     
+    # Build notifications for organizer
+    notifications = []
+    
+    # Get recent approvals (last 7 days) for organizer's events
+    from datetime import timedelta
+    week_ago = now - timedelta(days=7)
+    
+    recent_approvals = Approval.query.join(Event).filter(
+        Event.organizer_id == organizer_id,
+        Approval.approved_at != None,
+        Approval.approved_at >= week_ago
+    ).order_by(Approval.approved_at.desc()).limit(5).all()
+    
+    for approval in recent_approvals:
+        event = Event.query.get(approval.event_id)
+        if approval.status == 'approved':
+            notifications.append({
+                'type': 'success',
+                'icon': 'ph-check-circle',
+                'message': f'Your event "{event.title}" was approved by {approval.approver_role}!',
+                'event_id': event.event_id,
+                'time': approval.approved_at
+            })
+        elif approval.status == 'rejected':
+            notifications.append({
+                'type': 'error',
+                'icon': 'ph-x-circle',
+                'message': f'Your event "{event.title}" was rejected by {approval.approver_role}.',
+                'event_id': event.event_id,
+                'time': approval.approved_at,
+                'remarks': approval.remarks
+            })
+    
+    # Check for events that are now fully approved and ready to go
+    newly_approved_events = Event.query.filter(
+        Event.organizer_id == organizer_id,
+        Event.status == 'approved',
+        Event.date >= date.today()
+    ).all()
+    
+    for ev in newly_approved_events:
+        # Check if this is a recent approval (within 7 days)
+        latest_approval = Approval.query.filter_by(
+            event_id=ev.event_id,
+            status='approved'
+        ).order_by(Approval.approved_at.desc()).first()
+        
+        if latest_approval and latest_approval.approved_at and latest_approval.approved_at >= week_ago:
+            # Check if all required approvals are done
+            all_approvals = Approval.query.filter_by(event_id=ev.event_id).all()
+            if all(a.status == 'approved' for a in all_approvals):
+                # Only add if not already added
+                if not any(n.get('event_id') == ev.event_id and n.get('type') == 'ready' for n in notifications):
+                    notifications.append({
+                        'type': 'ready',
+                        'icon': 'ph-rocket-launch',
+                        'message': f'"{ev.title}" is fully approved and ready for {ev.date.strftime("%b %d")}!',
+                        'event_id': ev.event_id,
+                        'time': latest_approval.approved_at
+                    })
+    
+    # Sort notifications by time (most recent first) and limit
+    notifications.sort(key=lambda x: x.get('time') or now, reverse=True)
+    notifications = notifications[:5]
+    
     return render_template('organizer/dashboard.html',
                          events=events,
+                         pagination=pagination,
                          pending_count=pending_count,
                          approved_count=approved_count,
                          rejected_count=rejected_count,
                          past_event_ids=past_event_ids,
-                         search=search)
+                         search=search,
+                         notifications=notifications)
 
 
 @bp.route('/create-event', methods=['GET', 'POST'])
@@ -158,8 +232,12 @@ def create_event():
             certificate_template_id=int(certificate_template_id) if certificate_template_id else None,
             is_team_event=request.form.get('is_team_event') == '1',
             min_team_size=int(request.form.get('min_team_size', 2)) if request.form.get('is_team_event') == '1' else 1,
-            max_team_size=int(request.form.get('max_team_size', 4)) if request.form.get('is_team_event') == '1' else 1
+            max_team_size=int(request.form.get('max_team_size', 4)) if request.form.get('is_team_event') == '1' else 1,
+            has_prizes=request.form.get('has_prizes') == '1'
         )
+        # Audience setting: campus-exclusive or public
+        audience_val = request.form.get('audience', 'public')
+        event.is_campus_exclusive = (audience_val == 'campus')
         
         # Validate venue FK before committing: ensure it references an existing venue
         if event.venue_id is not None:
@@ -369,6 +447,7 @@ def edit_event(event_id):
         event.mode = (mode or 'offline')
         event.meeting_url = meeting_url if meeting_url else None
         event.certificate_template_id = int(certificate_template_id) if certificate_template_id else None
+        event.has_prizes = request.form.get('has_prizes') == '1'
 
         if requires_reapproval:
             event.status = 'pending'
@@ -645,7 +724,7 @@ def assign_prize(event_id):
     ).first_or_404()
     
     if not event.is_team_event:
-        flash('Prizes can only be assigned to team events.', 'error')
+        flash('Use the individual prize assignment for non-team events.', 'error')
         return redirect(url_for('organizer.view_event', event_id=event_id))
     
     team_id = request.form.get('team_id')
@@ -661,6 +740,13 @@ def assign_prize(event_id):
     team = Team.query.filter_by(team_id=team_id, event_id=event_id).first()
     if not team:
         flash('Team not found.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    # Check if minimum required team members have attendance
+    attended_members = [m for m in team.members if m.attendance]
+    min_required = event.min_team_size
+    if len(attended_members) < min_required:
+        flash(f'Cannot assign prize. At least {min_required} team members must have attended (currently {len(attended_members)} attended).', 'error')
         return redirect(url_for('organizer.view_event', event_id=event_id))
     
     # Update prize info
@@ -758,6 +844,135 @@ def clear_prize(event_id):
         flash(f'Prize cleared from team "{team_name}". {regenerated_count} certificate(s) updated.', 'success')
     else:
         flash(f'Prize cleared from team "{team_name}".', 'success')
+    
+    return redirect(url_for('organizer.view_event', event_id=event_id))
+
+
+@bp.route('/event/<int:event_id>/assign-individual-prize', methods=['POST'])
+@organizer_required
+def assign_individual_prize(event_id):
+    """Assign prize to an individual participant and regenerate certificate"""
+    organizer_id = session['user_id']
+    
+    # Verify event belongs to organizer
+    event = Event.query.filter_by(
+        event_id=event_id,
+        organizer_id=organizer_id
+    ).first_or_404()
+    
+    if event.is_team_event:
+        flash('Use team prize assignment for team events.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    if not event.has_prizes:
+        flash('This event does not have prizes enabled.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    registration_id = request.form.get('registration_id')
+    prize_position = request.form.get('prize_position')
+    prize_title = request.form.get('prize_title', '').strip()
+    certificate_template_id = request.form.get('certificate_template_id')
+    
+    if not registration_id or not prize_position:
+        flash('Please select a participant and prize position.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    # Get registration
+    registration = Registration.query.filter_by(
+        registration_id=registration_id, 
+        event_id=event_id
+    ).first()
+    
+    if not registration:
+        flash('Participant not found.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    # Check if participant has attendance
+    if not registration.attendance:
+        flash('Cannot assign prize to a participant who has not attended the event.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    # Update prize info
+    registration.prize_position = prize_position
+    registration.prize_title = prize_title if prize_title else None
+    registration.prize_certificate_template_id = int(certificate_template_id) if certificate_template_id else None
+    
+    db.session.commit()
+    
+    # Regenerate certificate with prize info
+    existing_cert = Certificate.query.filter_by(
+        student_id=registration.student_id,
+        event_id=event_id
+    ).first()
+    
+    if existing_cert:
+        cert_file_path = os.path.join('static', existing_cert.certificate_url)
+        if os.path.exists(cert_file_path):
+            os.remove(cert_file_path)
+        db.session.delete(existing_cert)
+        db.session.commit()
+    
+    generate_certificate_for_student(registration.student_id, event_id)
+    flash(f'Prize "{prize_position}" assigned to {registration.student.full_name}! Certificate updated.', 'success')
+    
+    return redirect(url_for('organizer.view_event', event_id=event_id))
+
+
+@bp.route('/event/<int:event_id>/clear-individual-prize', methods=['POST'])
+@organizer_required
+def clear_individual_prize(event_id):
+    """Clear prize from an individual participant and regenerate certificate"""
+    organizer_id = session['user_id']
+    
+    # Verify event belongs to organizer
+    event = Event.query.filter_by(
+        event_id=event_id,
+        organizer_id=organizer_id
+    ).first_or_404()
+    
+    registration_id = request.form.get('registration_id')
+    
+    if not registration_id:
+        flash('Please select a participant.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    # Get registration
+    registration = Registration.query.filter_by(
+        registration_id=registration_id, 
+        event_id=event_id
+    ).first()
+    
+    if not registration:
+        flash('Participant not found.', 'error')
+        return redirect(url_for('organizer.view_event', event_id=event_id))
+    
+    # Store name before clearing
+    student_name = registration.student.full_name
+    
+    # Clear prize info
+    registration.prize_position = None
+    registration.prize_title = None
+    
+    db.session.commit()
+    
+    # Regenerate certificate (now without prize info)
+    if registration.attendance:
+        existing_cert = Certificate.query.filter_by(
+            student_id=registration.student_id,
+            event_id=event_id
+        ).first()
+        
+        if existing_cert:
+            cert_file_path = os.path.join('static', existing_cert.certificate_url)
+            if os.path.exists(cert_file_path):
+                os.remove(cert_file_path)
+            db.session.delete(existing_cert)
+            db.session.commit()
+        
+        generate_certificate_for_student(registration.student_id, event_id)
+        flash(f'Prize cleared from {student_name}. Certificate updated.', 'success')
+    else:
+        flash(f'Prize cleared from {student_name}.', 'success')
     
     return redirect(url_for('organizer.view_event', event_id=event_id))
 
@@ -1801,15 +2016,16 @@ def generate_certificate_for_student(student_id, event_id):
     
     # Check if student is part of a team for this event (for prize info)
     prize_text = None
-    team_template = None
+    prize_template = None
+    
+    # Get the student's registration
+    registration = Registration.query.filter_by(
+        event_id=event_id,
+        student_id=student_id
+    ).first()
     
     if event.is_team_event:
-        # Find the team this student belongs to (via Registration with team_id)
-        registration = Registration.query.filter_by(
-            event_id=event_id,
-            student_id=student_id
-        ).first()
-        
+        # For team events, check team prize
         if registration and registration.team:
             team = registration.team
             if team.prize_position and team.prize_position != 'Participant':
@@ -1821,11 +2037,22 @@ def generate_certificate_for_student(student_id, event_id):
                 
                 # Use team's prize-specific certificate template if assigned
                 if team.prize_certificate_template_id:
-                    team_template = CertificateTemplate.query.get(team.prize_certificate_template_id)
+                    prize_template = CertificateTemplate.query.get(team.prize_certificate_template_id)
+    else:
+        # For individual events, check individual prize on registration
+        if registration and registration.prize_position and registration.prize_position != 'Participant':
+            if registration.prize_title:
+                prize_text = f"{registration.prize_position} - {registration.prize_title}"
+            else:
+                prize_text = f"{registration.prize_position} Place"
+            
+            # Use individual's prize-specific certificate template if assigned
+            if registration.prize_certificate_template_id:
+                prize_template = CertificateTemplate.query.get(registration.prize_certificate_template_id)
     
     # Determine which template to use
-    # Priority: 1) Team prize template, 2) Event template, 3) Organizer default
-    template = team_template
+    # Priority: 1) Prize template (team or individual), 2) Event template, 3) Organizer default
+    template = prize_template
     
     if not template and event.certificate_template_id:
         template = CertificateTemplate.query.filter_by(

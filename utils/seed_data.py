@@ -18,6 +18,7 @@ def seed_database():
     
     # Create Roles
     roles = [
+        Role(role_name='Guest'),
         Role(role_name='Student'),
         Role(role_name='Event Organizer'),
         Role(role_name='HOD'),
